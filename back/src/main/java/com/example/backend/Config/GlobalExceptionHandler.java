@@ -61,6 +61,24 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("A0005", "SMS kod noto'g'ri"));
     }
 
+    // ── SystemC xatolari ─────────────────────────────────────────
+
+    /** A0006 – Fayl hajmi 200KB dan oshib ketdi */
+    @ExceptionHandler(FileSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleFileSizeExceeded(FileSizeExceededException ex) {
+        log.warn("File size exceeded: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("A0006", "Fayl hajmi 200KB dan oshmasligi kerak"));
+    }
+
+    /** A0007 – Faqat JPEG formatdagi rasmlar qabul qilinadi */
+    @ExceptionHandler(InvalidFileFormatException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidFileFormat(InvalidFileFormatException ex) {
+        log.warn("Invalid file format: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(new ErrorResponse("A0007", "Faqat JPEG formatdagi rasmlar qabul qilinadi"));
+    }
+
     // ── Profile xatolari ─────────────────────────────────────────
 
     /** A0075, A0086, A0095 – Tashkilot topilmadi / o'chirilgan */
