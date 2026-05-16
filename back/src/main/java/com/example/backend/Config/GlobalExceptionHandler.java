@@ -61,6 +61,24 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("A0005", "SMS kod noto'g'ri"));
     }
 
+    // ── Profile xatolari ─────────────────────────────────────────
+
+    /** A0075, A0086, A0095 – Tashkilot topilmadi / o'chirilgan */
+    @ExceptionHandler(OrganizationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleOrgNotFound(OrganizationNotFoundException ex) {
+        log.warn("Org not found [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
+    /** A0087 – Tashkilot nomi allaqachon mavjud */
+    @ExceptionHandler(DuplicateNameException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateName(DuplicateNameException ex) {
+        log.warn("Duplicate name [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
     // ── Mavjud xatolari ──────────────────────────────────────────
 
     @ExceptionHandler(StudentNotFoundException.class)

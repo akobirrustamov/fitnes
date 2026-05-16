@@ -40,6 +40,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/v1/auth/logOut").permitAll()
                                 .requestMatchers("/api/v1/auth/changePasswordRequest").permitAll()
                                 .requestMatchers("/api/v1/auth/acceptSmsCode").permitAll()
+                                .requestMatchers("/api/v1/profile/**").permitAll()
                                 .requestMatchers("/api/v1/student-auth/login").permitAll()
                                 .requestMatchers("/api/v1/student-auth/refresh").permitAll()
                                 .requestMatchers("/api/v1/student").permitAll()
