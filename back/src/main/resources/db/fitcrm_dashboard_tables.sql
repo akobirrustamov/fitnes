@@ -98,3 +98,44 @@ CREATE TABLE IF NOT EXISTS trainers (
 );
 CREATE INDEX IF NOT EXISTS idx_trainers_org ON trainers(organization_id);
 
+-- Market products
+CREATE TABLE IF NOT EXISTS market_products (
+    id              BIGSERIAL PRIMARY KEY,
+    organization_id INTEGER       NOT NULL,
+    category_id     INTEGER,
+    name            VARCHAR(255)  NOT NULL,
+    description     VARCHAR(1000),
+    photo_url       VARCHAR(500),
+    price           DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    stock_count     INTEGER       NOT NULL DEFAULT 0,
+    active          BOOLEAN       NOT NULL DEFAULT true,
+    barcode         VARCHAR(100),
+    created_time    TIMESTAMP     NOT NULL DEFAULT NOW(),
+    updated_time    TIMESTAMP,
+    deleted         BOOLEAN       NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS idx_market_products_org      ON market_products(organization_id);
+CREATE INDEX IF NOT EXISTS idx_market_products_category ON market_products(category_id);
+
+-- Market sales header
+CREATE TABLE IF NOT EXISTS market_sales (
+    id              BIGSERIAL PRIMARY KEY,
+    organization_id INTEGER       NOT NULL,
+    person_id       BIGINT        NOT NULL,
+    total_price     DECIMAL(18, 2) NOT NULL,
+    paid_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    created_time    TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_market_sales_org ON market_sales(organization_id);
+
+-- Market sales items
+CREATE TABLE IF NOT EXISTS market_sale_items (
+    id           BIGSERIAL PRIMARY KEY,
+    sale_id      BIGINT         NOT NULL REFERENCES market_sales(id) ON DELETE CASCADE,
+    product_id   BIGINT         NOT NULL,
+    product_name VARCHAR(255),
+    amount       INTEGER        NOT NULL,
+    price        DECIMAL(18, 2) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_market_sale_items_sale ON market_sale_items(sale_id);
+
