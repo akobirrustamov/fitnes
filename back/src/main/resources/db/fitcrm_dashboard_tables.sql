@@ -72,12 +72,21 @@ CREATE INDEX IF NOT EXISTS idx_org_graphics_org ON organization_graphics(organiz
 -- API settings
 CREATE TABLE IF NOT EXISTS api_settings (
     id                 BIGSERIAL PRIMARY KEY,
-    max_graphics_count INTEGER NOT NULL DEFAULT 50
+    max_graphics_count INTEGER NOT NULL DEFAULT 50,
+    max_terminals_count INTEGER NOT NULL DEFAULT 10
 );
 
-INSERT INTO api_settings (max_graphics_count)
-SELECT 50
+ALTER TABLE api_settings
+    ADD COLUMN IF NOT EXISTS max_terminals_count INTEGER NOT NULL DEFAULT 10;
+
+INSERT INTO api_settings (max_graphics_count, max_terminals_count)
+SELECT 50, 10
 WHERE NOT EXISTS (SELECT 1 FROM api_settings);
+
+-- Optional terminal online fields
+ALTER TABLE terminals
+    ADD COLUMN IF NOT EXISTS last_online TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS is_online   BOOLEAN NOT NULL DEFAULT false;
 
 -- Trainers
 CREATE TABLE IF NOT EXISTS trainers (
