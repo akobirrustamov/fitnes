@@ -43,6 +43,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/v1/profile/**").permitAll()
                                 .requestMatchers("/api/v1/systemC/**").permitAll()
                                 .requestMatchers("/api/v1/admin/categories/**").permitAll()
+                                .requestMatchers("/api/v1/admin/organizations/**").permitAll()
                                 .requestMatchers("/api/v1/student-auth/login").permitAll()
                                 .requestMatchers("/api/v1/student-auth/refresh").permitAll()
                                 .requestMatchers("/api/v1/student").permitAll()

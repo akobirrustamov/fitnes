@@ -89,10 +89,10 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
     }
 
-    /** A0009 – Kategoriya validatsiya xatosi */
+    /** A0009, A0014 – Validatsiya xatosi (kategoriya va tashkilot uchun) */
     @ExceptionHandler(CategoryValidationException.class)
     public ResponseEntity<ErrorResponse> handleCategoryValidation(CategoryValidationException ex) {
-        log.warn("Category validation [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        log.warn("Validation [{}]: {}", ex.getErrorCode(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
     }
@@ -104,6 +104,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
     }
+
+    // ── Organization / Validation xatolari ───────────────────────
+    // A0013-A0017: OrganizationNotFoundException (NOT_FOUND) qayta ishlatiladi
 
     // ── Profile xatolari ─────────────────────────────────────────
 

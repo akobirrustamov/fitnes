@@ -77,6 +77,12 @@ public class UserProfile {
     /** Hudud ID */
     private Integer regionId;
 
+    /** Hudud nomi (cache, Region entity kerak bo'lmasligi uchun) */
+    private String regionName;
+
+    /** Viloyat ID */
+    private Integer provinceId;
+
     /** Manzil */
     private String location;
 

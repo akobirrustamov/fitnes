@@ -14,6 +14,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRepo extends JpaRepository<User, UUID> {
+
     @Query(value = "select * from users where phone=:phone", nativeQuery = true)
     Optional<User> findByPhone(String phone);
+
+    Optional<User> findByNumber(Integer number);
+
+    @Query("SELECT MAX(u.number) FROM User u WHERE u.number IS NOT NULL")
+    Optional<Integer> findMaxNumber();
 }
