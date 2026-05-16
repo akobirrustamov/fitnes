@@ -153,5 +153,15 @@ public interface UserProfileRepo extends JpaRepository<UserProfile, UUID> {
     boolean existsActiveRegionByProvinceId(
             @Param("role")       UserRoles role,
             @Param("provinceId") Integer provinceId);
+
+    /** Obuna muddati boshlanish/tugash orasidagi tashkilotlar */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false AND up.active = true " +
+           "AND up.subscriptionEndDate IS NOT NULL " +
+           "AND up.subscriptionEndDate BETWEEN :fromDate AND :toDate")
+    List<UserProfile> findBySubscriptionEndDateBetween(
+            @Param("role")     UserRoles role,
+            @Param("fromDate") java.time.LocalDate fromDate,
+            @Param("toDate")   java.time.LocalDate toDate);
 }
 

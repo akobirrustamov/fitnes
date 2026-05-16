@@ -104,5 +104,8 @@ public class UserProfile {
 
     /** Yangilanish vaqti */
     private LocalDateTime updatedAt;
+
+    /** Obuna tugash sanasi */
+    private java.time.LocalDate subscriptionEndDate;
 }
 

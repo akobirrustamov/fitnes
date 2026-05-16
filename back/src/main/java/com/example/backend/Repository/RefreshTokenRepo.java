@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface RefreshTokenRepo extends JpaRepository<RefreshToken, Long> {
@@ -17,5 +18,17 @@ public interface RefreshTokenRepo extends JpaRepository<RefreshToken, Long> {
     @Transactional
     @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user = :user AND rt.revoked = false")
     void revokeAllByUser(User user);
+
+    /** Muddati tugagan tokenlarni o'chirish */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM RefreshToken rt WHERE rt.expiresAt < :now")
+    int deleteExpiredTokens(@org.springframework.data.repository.query.Param("now") LocalDateTime now);
+
+    /** Revoked va eski tokenlarni o'chirish */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM RefreshToken rt WHERE rt.revoked = true AND rt.createdAt < :cutoff")
+    int deleteOldRevokedTokens(@org.springframework.data.repository.query.Param("cutoff") LocalDateTime cutoff);
 }
 
