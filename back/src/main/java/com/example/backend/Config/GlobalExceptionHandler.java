@@ -142,6 +142,22 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
     }
 
+    /** A0022 – Viloyat topilmadi */
+    @ExceptionHandler(ProvinceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProvinceNotFound(ProvinceNotFoundException ex) {
+        log.warn("Province not found [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
+    /** A0024 – Viloyatda tumanlar mavjud */
+    @ExceptionHandler(ProvinceHasRegionsException.class)
+    public ResponseEntity<ErrorResponse> handleProvinceHasRegions(ProvinceHasRegionsException ex) {
+        log.warn("Province has regions [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
     // ── Mavjud xatolari ──────────────────────────────────────────
 
     @ExceptionHandler(StudentNotFoundException.class)

@@ -6,5 +6,6 @@ public enum UserRoles {
     ROLE_USER,
     ROLE_MONITOR,
     ROLE_REGION,
+    ROLE_PROVINCE,
 }
 

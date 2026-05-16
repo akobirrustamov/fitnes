@@ -127,5 +127,31 @@ public interface UserProfileRepo extends JpaRepository<UserProfile, UUID> {
            "WHERE r.name = :role AND up.deleted = false " +
            "AND (up.regionId IS NULL OR up.regionId = 0) ORDER BY u.name ASC")
     List<UserProfile> findUnassignedOrganizationsByRegion(@Param("role") UserRoles role);
+
+    // ── Province queries ───────────────────────────────────────────
+
+    /** Viloyatlar ro'yxati: ROLE_PROVINCE + active filter + paginatsiya */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (:active IS NULL OR up.active = :active)")
+    Page<UserProfile> findProvinces(
+            @Param("role")   UserRoles role,
+            @Param("active") Boolean active,
+            Pageable pageable);
+
+    /** Viloyatlar ro'yxati (paginatsiyasiz, Excel uchun) */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (:active IS NULL OR up.active = :active)")
+    List<UserProfile> findProvincesAll(
+            @Param("role")   UserRoles role,
+            @Param("active") Boolean active);
+
+    /** Berilgan viloyatda region (tuman) bor-yo'qligini tekshirish */
+    @Query("SELECT COUNT(up) > 0 FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false AND up.provinceId = :provinceId")
+    boolean existsActiveRegionByProvinceId(
+            @Param("role")       UserRoles role,
+            @Param("provinceId") Integer provinceId);
 }
 
