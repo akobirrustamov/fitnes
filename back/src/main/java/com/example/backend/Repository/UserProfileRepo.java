@@ -82,5 +82,50 @@ public interface UserProfileRepo extends JpaRepository<UserProfile, UUID> {
     @Transactional
     @Query("UPDATE UserProfile up SET up.monitorId = :monitorId WHERE up.id = :profileId")
     void updateMonitorId(@Param("profileId") UUID profileId, @Param("monitorId") Integer monitorId);
+
+    // ── Region queries ─────────────────────────────────────────────
+
+    /** Tumanlar ro'yxati: ROLE_REGION + filtrlar + paginatsiya */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (:provinceId IS NULL OR up.provinceId = :provinceId) " +
+           "AND (:active IS NULL OR up.active = :active) " +
+           "AND (:part IS NULL OR :part = '' " +
+           "      OR LOWER(u.name) LIKE LOWER(CONCAT('%', :part, '%')) " +
+           "      OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :part, '%')))")
+    Page<UserProfile> findRegions(
+            @Param("role")       UserRoles role,
+            @Param("provinceId") Integer provinceId,
+            @Param("active")     Boolean active,
+            @Param("part")       String part,
+            Pageable pageable);
+
+    /** Tumanlar ro'yxati (paginatsiyasiz, Excel uchun) */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (:provinceId IS NULL OR up.provinceId = :provinceId) " +
+           "AND (:active IS NULL OR up.active = :active) " +
+           "AND (:part IS NULL OR :part = '' " +
+           "      OR LOWER(u.name) LIKE LOWER(CONCAT('%', :part, '%')) " +
+           "      OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :part, '%')))")
+    List<UserProfile> findRegionsAll(
+            @Param("role")       UserRoles role,
+            @Param("provinceId") Integer provinceId,
+            @Param("active")     Boolean active,
+            @Param("part")       String part);
+
+    /** Tuman tashkilotlari: regionId bo'yicha, o'chirilmagan */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND up.regionId = :regionId ORDER BY u.name ASC")
+    List<UserProfile> findOrganizationsByRegionId(
+            @Param("role")     UserRoles role,
+            @Param("regionId") Integer regionId);
+
+    /** Hech qaysi tumanga biriktirilmagan tashkilotlar (regionId=0 yoki null) */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (up.regionId IS NULL OR up.regionId = 0) ORDER BY u.name ASC")
+    List<UserProfile> findUnassignedOrganizationsByRegion(@Param("role") UserRoles role);
 }
 

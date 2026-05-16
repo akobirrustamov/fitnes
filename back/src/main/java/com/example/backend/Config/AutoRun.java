@@ -28,6 +28,10 @@ public class AutoRun implements CommandLineRunner {
             if (roleRepo.findByName(UserRoles.ROLE_MONITOR) == null) {
                 roleRepo.save(new Role(3, UserRoles.ROLE_MONITOR));
             }
+            // ROLE_REGION mavjud bo'lmasa, qo'shish
+            if (roleRepo.findByName(UserRoles.ROLE_REGION) == null) {
+                roleRepo.save(new Role(4, UserRoles.ROLE_REGION));
+            }
         }
 
 
@@ -56,6 +60,7 @@ public class AutoRun implements CommandLineRunner {
         return roleRepo.saveAll(List.of(
                 new Role(1, UserRoles.ROLE_ADMIN),
                 new Role(3, UserRoles.ROLE_MONITOR),
+                new Role(4, UserRoles.ROLE_REGION),
                 new Role(5, UserRoles.ROLE_SUPERADMIN)
         ));
     }

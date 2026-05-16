@@ -83,6 +83,9 @@ public class UserProfile {
     /** Viloyat ID */
     private Integer provinceId;
 
+    /** Viloyat nomi (Region uchun cache) */
+    private String provinceName;
+
     /** Manzil */
     private String location;
 

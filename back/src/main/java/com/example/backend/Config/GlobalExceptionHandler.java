@@ -134,6 +134,14 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
     }
 
+    /** A0020, A0015 (region context) – Tuman topilmadi */
+    @ExceptionHandler(RegionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleRegionNotFound(RegionNotFoundException ex) {
+        log.warn("Region not found [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
     // ── Mavjud xatolari ──────────────────────────────────────────
 
     @ExceptionHandler(StudentNotFoundException.class)
