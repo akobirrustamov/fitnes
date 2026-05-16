@@ -79,3 +79,22 @@ INSERT INTO api_settings (max_graphics_count)
 SELECT 50
 WHERE NOT EXISTS (SELECT 1 FROM api_settings);
 
+-- Trainers
+CREATE TABLE IF NOT EXISTS trainers (
+    id               BIGSERIAL PRIMARY KEY,
+    organization_id  INTEGER       NOT NULL,
+    fullname         VARCHAR(255)  NOT NULL,
+    photo_url        VARCHAR(500),
+    achievements     VARCHAR(1000),
+    price            DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    phone_number     VARCHAR(50),
+    specialization   VARCHAR(255),
+    experience_years INTEGER,
+    bio              TEXT,
+    active           BOOLEAN       NOT NULL DEFAULT true,
+    created_time     TIMESTAMP     NOT NULL DEFAULT NOW(),
+    updated_time     TIMESTAMP,
+    deleted          BOOLEAN       NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS idx_trainers_org ON trainers(organization_id);
+
