@@ -21,11 +21,14 @@ public class AutoRun implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-
         if (roleRepo.findAll().isEmpty()) {
             saveRoles();
+        } else {
+            // ROLE_MONITOR mavjud bo'lmasa, qo'shish
+            if (roleRepo.findByName(UserRoles.ROLE_MONITOR) == null) {
+                roleRepo.save(new Role(3, UserRoles.ROLE_MONITOR));
+            }
         }
-
 
 
         checkAndCreateUser("superadmin", "00000000", "SUPER ADMIN", UserRoles.ROLE_SUPERADMIN);
@@ -52,6 +55,7 @@ public class AutoRun implements CommandLineRunner {
     private List<Role> saveRoles() {
         return roleRepo.saveAll(List.of(
                 new Role(1, UserRoles.ROLE_ADMIN),
+                new Role(3, UserRoles.ROLE_MONITOR),
                 new Role(5, UserRoles.ROLE_SUPERADMIN)
         ));
     }

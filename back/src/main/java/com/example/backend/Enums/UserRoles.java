@@ -4,5 +4,6 @@ public enum UserRoles {
     ROLE_SUPERADMIN,
     ROLE_ADMIN,
     ROLE_USER,
+    ROLE_MONITOR,
 }
 

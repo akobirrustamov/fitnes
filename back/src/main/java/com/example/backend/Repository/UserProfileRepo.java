@@ -6,9 +6,12 @@ import com.example.backend.Enums.UserRoles;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,5 +37,50 @@ public interface UserProfileRepo extends JpaRepository<UserProfile, UUID> {
             @Param("active")     Boolean active,
             @Param("search")     String search,
             Pageable pageable);
+
+    /** Monitorlar ro'yxati: ROLE_MONITOR + filtrlar + paginatsiya */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (:active IS NULL OR up.active = :active) " +
+           "AND (:part IS NULL OR :part = '' " +
+           "      OR LOWER(u.name) LIKE LOWER(CONCAT('%', :part, '%')) " +
+           "      OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :part, '%')))")
+    Page<UserProfile> findMonitors(
+            @Param("role")   UserRoles role,
+            @Param("active") Boolean active,
+            @Param("part")   String part,
+            Pageable pageable);
+
+    /** Monitorlar ro'yxati (paginatsiyasiz, Excel uchun) */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (:active IS NULL OR up.active = :active) " +
+           "AND (:part IS NULL OR :part = '' " +
+           "      OR LOWER(u.name) LIKE LOWER(CONCAT('%', :part, '%')) " +
+           "      OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :part, '%')))")
+    List<UserProfile> findMonitorsAll(
+            @Param("role")   UserRoles role,
+            @Param("active") Boolean active,
+            @Param("part")   String part);
+
+    /** Monitor tashkilotlari: monitorId bo'yicha, o'chirilmagan */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND up.monitorId = :monitorId ORDER BY u.name ASC")
+    List<UserProfile> findOrganizationsByMonitorId(
+            @Param("role")      UserRoles role,
+            @Param("monitorId") Integer monitorId);
+
+    /** Hech qaysi monitorga biriktirilmagan tashkilotlar (monitorId=0 yoki null) */
+    @Query("SELECT up FROM UserProfile up JOIN up.user u JOIN u.roles r " +
+           "WHERE r.name = :role AND up.deleted = false " +
+           "AND (up.monitorId IS NULL OR up.monitorId = 0) ORDER BY u.name ASC")
+    List<UserProfile> findUnassignedOrganizations(@Param("role") UserRoles role);
+
+    /** Tashkilotning monitorId sini yangilash */
+    @Modifying
+    @Transactional
+    @Query("UPDATE UserProfile up SET up.monitorId = :monitorId WHERE up.id = :profileId")
+    void updateMonitorId(@Param("profileId") UUID profileId, @Param("monitorId") Integer monitorId);
 }
 

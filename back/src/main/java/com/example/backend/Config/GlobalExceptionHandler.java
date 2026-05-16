@@ -110,6 +110,14 @@ public class GlobalExceptionHandler {
 
     // ── Profile xatolari ─────────────────────────────────────────
 
+    /** A0018-A0025 – Monitor topilmadi */
+    @ExceptionHandler(MonitorNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleMonitorNotFound(MonitorNotFoundException ex) {
+        log.warn("Monitor not found [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
     /** A0075, A0086, A0095 – Tashkilot topilmadi / o'chirilgan */
     @ExceptionHandler(OrganizationNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleOrgNotFound(OrganizationNotFoundException ex) {
