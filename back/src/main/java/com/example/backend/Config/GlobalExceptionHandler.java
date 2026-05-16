@@ -79,6 +79,32 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("A0007", "Faqat JPEG formatdagi rasmlar qabul qilinadi"));
     }
 
+    // ── Category xatolari ────────────────────────────────────────
+
+    /** A0008, A0011, A0012 – Kategoriya topilmadi */
+    @ExceptionHandler(CategoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryNotFound(CategoryNotFoundException ex) {
+        log.warn("Category not found [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
+    /** A0009 – Kategoriya validatsiya xatosi */
+    @ExceptionHandler(CategoryValidationException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryValidation(CategoryValidationException ex) {
+        log.warn("Category validation [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
+    /** A0010 – Kategoriya nomi takrorlangan */
+    @ExceptionHandler(CategoryAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryAlreadyExists(CategoryAlreadyExistsException ex) {
+        log.warn("Category already exists [{}]: {}", ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+    }
+
     // ── Profile xatolari ─────────────────────────────────────────
 
     /** A0075, A0086, A0095 – Tashkilot topilmadi / o'chirilgan */
