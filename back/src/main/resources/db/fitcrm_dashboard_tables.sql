@@ -50,3 +50,32 @@ CREATE TABLE IF NOT EXISTS entries (
 CREATE INDEX IF NOT EXISTS idx_entries_org  ON entries(organization_id);
 CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(entry_time);
 
+-- Organization graphics (weekly templates)
+CREATE TABLE IF NOT EXISTS organization_graphics (
+    id              BIGSERIAL PRIMARY KEY,
+    organization_id INTEGER      NOT NULL,
+    name            VARCHAR(255) NOT NULL,
+    description     VARCHAR(500),
+    is_monday       BOOLEAN      NOT NULL DEFAULT false,
+    is_tuesday      BOOLEAN      NOT NULL DEFAULT false,
+    is_wednesday    BOOLEAN      NOT NULL DEFAULT false,
+    is_thursday     BOOLEAN      NOT NULL DEFAULT false,
+    is_friday       BOOLEAN      NOT NULL DEFAULT false,
+    is_saturday     BOOLEAN      NOT NULL DEFAULT false,
+    is_sunday       BOOLEAN      NOT NULL DEFAULT false,
+    created_time    TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_time    TIMESTAMP,
+    deleted         BOOLEAN      NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS idx_org_graphics_org ON organization_graphics(organization_id);
+
+-- API settings
+CREATE TABLE IF NOT EXISTS api_settings (
+    id                 BIGSERIAL PRIMARY KEY,
+    max_graphics_count INTEGER NOT NULL DEFAULT 50
+);
+
+INSERT INTO api_settings (max_graphics_count)
+SELECT 50
+WHERE NOT EXISTS (SELECT 1 FROM api_settings);
+
