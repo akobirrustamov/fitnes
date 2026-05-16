@@ -17,11 +17,15 @@ import java.util.UUID;
 
 @Service
 public class JwtService {
+
+    /** Access token muddati: 1 soat (3600 sekund) */
+    public static final long ACCESS_TOKEN_EXPIRY_SECONDS = 3600L;
+
     public String generateJwtToken(User user) {
         UUID id = user.getId();
         Map<String, Object> claims = new HashMap<>();
         String jwt = Jwts.builder()
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 6000))
+                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRY_SECONDS * 1000))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setSubject(id.toString())
                 .addClaims(claims)

@@ -1,8 +1,7 @@
 package com.example.backend.Config;
 
-import com.example.backend.exceptions.InvalidStudentDataException;
-import com.example.backend.exceptions.ResourceNotFoundException;
-import com.example.backend.exceptions.StudentNotFoundException;
+import com.example.backend.Payload.res.ErrorResponse;
+import com.example.backend.exceptions.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +17,51 @@ import java.util.Map;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    // ── Auth xatolari ────────────────────────────────────────────
+
+    /** A0001 – Login yoki parol noto'g'ri */
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
+        log.warn("Auth: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse("A0001", "Login yoki parol noto'g'ri"));
+    }
+
+    /** A0002 – Login bloklangan */
+    @ExceptionHandler(LoginBlockedException.class)
+    public ResponseEntity<ErrorResponse> handleLoginBlocked(LoginBlockedException ex) {
+        log.warn("Blok: {} daqiqa qoldi", ex.getRemainingMinutes());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("A0002",
+                        "Login bloklangan. Yana " + ex.getRemainingMinutes() + " daqiqadan so'ng urinib ko'ring."));
+    }
+
+    /** A0003 – Refresh token yaroqsiz */
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        log.warn("Refresh token: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse("A0003", "Refresh token yaroqsiz yoki muddati tugagan"));
+    }
+
+    /** A0004 – Login topilmadi */
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+        log.warn("User not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("A0004", ex.getMessage()));
+    }
+
+    /** A0005 – SMS kod noto'g'ri */
+    @ExceptionHandler(InvalidSmsCodeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSmsCode(InvalidSmsCodeException ex) {
+        log.warn("SMS kod: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("A0005", "SMS kod noto'g'ri"));
+    }
+
+    // ── Mavjud xatolari ──────────────────────────────────────────
 
     @ExceptionHandler(StudentNotFoundException.class)
     public ResponseEntity<?> handleStudentNotFound(StudentNotFoundException ex) {
