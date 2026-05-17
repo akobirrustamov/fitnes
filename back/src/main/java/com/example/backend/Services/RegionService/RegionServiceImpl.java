@@ -9,8 +9,8 @@ import com.example.backend.Payload.req.RegionCreateRequest;
 import com.example.backend.Payload.req.RegionUpdateRequest;
 import com.example.backend.Payload.res.RegionDetailResponse;
 import com.example.backend.Payload.res.RegionListItem;
+import com.example.backend.Repository.RegionRepo;
 import com.example.backend.Repository.RoleRepo;
-import com.example.backend.Repository.UserProfileRepo;
 import com.example.backend.Repository.UserRepo;
 import com.example.backend.Services.AuthService.RefreshTokenService;
 import com.example.backend.exceptions.OrganizationNotFoundException;
@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public class RegionServiceImpl implements RegionService {
 
     private final UserRepo userRepo;
-    private final UserProfileRepo userProfileRepo;
+    private final RegionRepo regionRepo;
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
@@ -53,7 +53,7 @@ public class RegionServiceImpl implements RegionService {
         PageRequest pageable = PageRequest.of(Math.max(0, page - 1), pageSize);
         String partParam = (part != null && !part.isBlank()) ? part : null;
 
-        Page<UserProfile> resultPage = userProfileRepo.findRegions(
+        Page<UserProfile> resultPage = regionRepo.findRegions(
                 UserRoles.ROLE_REGION, provinceId, active, partParam, pageable);
 
         List<RegionListItem> items = resultPage.getContent()
@@ -74,7 +74,7 @@ public class RegionServiceImpl implements RegionService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getById(Integer id) {
-        UserProfile profile = findRegionProfileByNumber(id, "A0020");
+        UserProfile profile = findRegionProfileByNumber(id);
         return ResponseEntity.ok(toDetailResponse(profile));
     }
 
@@ -130,7 +130,7 @@ public class RegionServiceImpl implements RegionService {
                 .deleted(false)
                 .telegramBotActive(false)
                 .build();
-        userProfileRepo.save(profile);
+        regionRepo.save(profile);
 
         log.info("Tuman yaratildi: id={}, login={}", nextNumber, request.getLogin());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
@@ -145,7 +145,7 @@ public class RegionServiceImpl implements RegionService {
     @Override
     @Transactional
     public HttpEntity<?> update(Integer id, RegionUpdateRequest request) {
-        UserProfile profile = findRegionProfileByNumber(id, "A0020");
+        UserProfile profile = findRegionProfileByNumber(id);
         User user = profile.getUser();
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -161,7 +161,7 @@ public class RegionServiceImpl implements RegionService {
         if (request.getPhotoUrl()      != null) profile.setPhotoUrl(request.getPhotoUrl());
 
         profile.setUpdatedAt(LocalDateTime.now());
-        userProfileRepo.save(profile);
+        regionRepo.save(profile);
 
         log.info("Tuman yangilandi: id={}", id);
         return ResponseEntity.ok(Map.of(
@@ -176,15 +176,13 @@ public class RegionServiceImpl implements RegionService {
     @Override
     @Transactional
     public HttpEntity<?> delete(Integer id) {
-        UserProfile profile = userRepo.findByNumber(id)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted())
+        UserProfile profile = regionRepo.findByUser_NumberAndDeletedFalse(id)
                 .orElseThrow(() -> new RegionNotFoundException(
                         "A0020", "Tuman topilmadi yoki allaqachon o'chirilgan"));
 
         profile.setDeleted(true);
         profile.setActive(false);
-        userProfileRepo.save(profile);
+        regionRepo.save(profile);
 
         log.info("Tuman soft-deleted: id={}", id);
         return ResponseEntity.ok(Map.of("message", "Tuman muvaffaqiyatli o'chirildi"));
@@ -196,9 +194,9 @@ public class RegionServiceImpl implements RegionService {
     @Override
     @Transactional
     public HttpEntity<?> setActive(Integer id, Boolean active) {
-        UserProfile profile = findRegionProfileByNumber(id, "A0020");
+        UserProfile profile = findRegionProfileByNumber(id);
         profile.setActive(active);
-        userProfileRepo.save(profile);
+        regionRepo.save(profile);
 
         String msg = active ? "Tuman faollashtirildi" : "Tuman bloklandi";
         log.info("{}: id={}", msg, id);
@@ -215,7 +213,7 @@ public class RegionServiceImpl implements RegionService {
     @Override
     public HttpEntity<?> download(String part, Boolean active, Integer provinceId) {
         String partParam = (part != null && !part.isBlank()) ? part : null;
-        List<UserProfile> regions = userProfileRepo.findRegionsAll(
+        List<UserProfile> regions = regionRepo.findRegionsAll(
                 UserRoles.ROLE_REGION, provinceId, active, partParam);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -282,7 +280,7 @@ public class RegionServiceImpl implements RegionService {
     @Override
     @Transactional
     public HttpEntity<?> changePassword(Integer id, RegionChangePasswordRequest request) {
-        UserProfile profile = findRegionProfileByNumber(id, "A0020");
+        UserProfile profile = findRegionProfileByNumber(id);
         User user = profile.getUser();
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -305,21 +303,18 @@ public class RegionServiceImpl implements RegionService {
     @Transactional
     public HttpEntity<?> assignOrganization(Integer regionId, Integer organizationId) {
         // Tuman topish (faol bo'lishi shart)
-        userRepo.findByNumber(regionId)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted() && p.isActive())
+        regionRepo.findByUser_NumberAndDeletedFalse(regionId)
+                .filter(UserProfile::isActive)
                 .orElseThrow(() -> new RegionNotFoundException(
                         "A0015", "Tuman topilmadi yoki faol emas"));
 
         // Tashkilot topish
-        UserProfile orgProfile = userRepo.findByNumber(organizationId)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted())
+        UserProfile orgProfile = regionRepo.findByUser_NumberAndDeletedFalse(organizationId)
                 .orElseThrow(() -> new OrganizationNotFoundException(
                         "A0014", "Tashkilot topilmadi"));
 
         orgProfile.setRegionId(regionId);
-        userProfileRepo.save(orgProfile);
+        regionRepo.save(orgProfile);
 
         log.info("Tashkilot {} tumanga {} biriktirildi", organizationId, regionId);
         return ResponseEntity.ok(Map.of("message", "Tashkilot muvaffaqiyatli tumanga biriktirildi"));
@@ -331,14 +326,13 @@ public class RegionServiceImpl implements RegionService {
     @Override
     @Transactional
     public HttpEntity<?> removeOrganization(Integer regionId, Integer organizationId) {
-        UserProfile orgProfile = userRepo.findByNumber(organizationId)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted() && regionId.equals(p.getRegionId()))
+        UserProfile orgProfile = regionRepo.findByUser_NumberAndDeletedFalse(organizationId)
+                .filter(p -> regionId.equals(p.getRegionId()))
                 .orElseThrow(() -> new OrganizationNotFoundException(
                         "A0017", "Tashkilot topilmadi yoki bu tumanga biriktirilmagan"));
 
         orgProfile.setRegionId(0);
-        userProfileRepo.save(orgProfile);
+        regionRepo.save(orgProfile);
 
         log.info("Tashkilot {} tumandan {} olib tashlandi", organizationId, regionId);
         return ResponseEntity.ok(Map.of("message", "Tashkilot tumanadan muvaffaqiyatli olib tashlandi"));
@@ -349,7 +343,7 @@ public class RegionServiceImpl implements RegionService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getUnassignedOrganizations() {
-        List<UserProfile> orgs = userProfileRepo.findUnassignedOrganizationsByRegion(UserRoles.ROLE_ADMIN);
+        List<UserProfile> orgs = regionRepo.findUnassignedOrganizationsByRegion(UserRoles.ROLE_ADMIN);
 
         List<Map<String, Object>> data = orgs.stream()
                 .map(this::toOrgItem)
@@ -363,7 +357,7 @@ public class RegionServiceImpl implements RegionService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getRegionOrganizations(Integer regionId) {
-        List<UserProfile> orgs = userProfileRepo.findOrganizationsByRegionId(
+        List<UserProfile> orgs = regionRepo.findOrganizationsByRegionId(
                 UserRoles.ROLE_ADMIN, regionId);
 
         List<Map<String, Object>> data = orgs.stream()
@@ -377,11 +371,9 @@ public class RegionServiceImpl implements RegionService {
     //  Private helpers
     // ═══════════════════════════════════════════════════════════
 
-    private UserProfile findRegionProfileByNumber(Integer number, String errorCode) {
-        User user = userRepo.findByNumber(number)
-                .orElseThrow(() -> new RegionNotFoundException(errorCode, "Tuman topilmadi"));
-        return userProfileRepo.findByUser(user)
-                .orElseThrow(() -> new RegionNotFoundException(errorCode, "Tuman topilmadi"));
+    private UserProfile findRegionProfileByNumber(Integer number) {
+        return regionRepo.findByUser_NumberAndDeletedFalse(number)
+                .orElseThrow(() -> new RegionNotFoundException("A0020", "Tuman topilmadi"));
     }
 
     private RegionListItem toListItem(UserProfile p) {

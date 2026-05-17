@@ -1,14 +1,17 @@
 package com.example.backend.Services.TasksService;
 
+import com.example.backend.Projection.TaskRowProjection;
+import com.example.backend.Repository.TerminalRepo;
+import com.example.backend.Repository.TaskRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,114 +21,56 @@ import java.util.Map;
 @Slf4j
 public class TasksServiceImpl implements TasksService {
 
-    private final JdbcTemplate jdbc;
+    private final TaskRepo taskRepo;
+    private final TerminalRepo terminalRepo;
 
     @Override
     public HttpEntity<?> getAll(Integer orgId, Long terminalId, String waiting, String taskType, int page, int pageSize) {
         int safePage = Math.max(1, page);
         int safePageSize = Math.min(500, Math.max(1, pageSize));
 
-        StringBuilder where = new StringBuilder(" WHERE t.organization_id=? AND t.deleted=false ");
-        List<Object> params = new ArrayList<>();
-        params.add(orgId);
-
-        if (terminalId != null) {
-            where.append(" AND tt.terminal_id=? ");
-            params.add(terminalId);
+        if (terminalId != null && terminalRepo.findByIdAndOrganizationIdAndDeletedFalse(terminalId, orgId).isEmpty()) {
+            return ResponseEntity.ok(Map.of(
+                    "data", List.of(),
+                    "totalCount", 0,
+                    "page", safePage,
+                    "pageSize", safePageSize
+            ));
         }
 
-        String dbStatus = mapWaitingToDb(waiting);
-        if (dbStatus != null) {
-            where.append(" AND LOWER(tt.status)=? ");
-            params.add(dbStatus.toLowerCase());
-        }
+        Page<TaskRowProjection> resultPage = taskRepo.findFiltered(
+                orgId,
+                terminalId,
+                mapWaitingToDb(waiting),
+                mapTaskTypeToDb(taskType),
+                PageRequest.of(safePage - 1, safePageSize));
 
-        String dbTaskType = mapTaskTypeToDb(taskType);
-        if (dbTaskType != null) {
-            where.append(" AND LOWER(tt.action)=? ");
-            params.add(dbTaskType.toLowerCase());
-        }
+        List<Map<String, Object>> data = resultPage.getContent().stream()
+                .map(this::toTaskItem)
+                .toList();
 
-        Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM terminal_tasks tt JOIN terminals t ON t.id=tt.terminal_id " + where,
-                Long.class,
-                params.toArray()
-        );
-
-        List<Object> listParams = new ArrayList<>(params);
-        listParams.add(safePageSize);
-        listParams.add((safePage - 1L) * safePageSize);
-
-        List<Map<String, Object>> data = jdbc.query(
-                "SELECT tt.id, tt.terminal_id, t.name AS terminal_name, tt.person_id, p.full_name AS person_name, tt.action, tt.status, tt.created_at " +
-                        "FROM terminal_tasks tt JOIN terminals t ON t.id=tt.terminal_id LEFT JOIN persons p ON p.id=tt.person_id " +
-                        where + " ORDER BY tt.created_at DESC LIMIT ? OFFSET ?",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("terminalId", rs.getLong("terminal_id"));
-                    row.put("terminalName", rs.getString("terminal_name"));
-                    row.put("personId", rs.getObject("person_id") == null ? null : rs.getLong("person_id"));
-                    row.put("personName", rs.getString("person_name"));
-                    row.put("taskType", mapDbTaskTypeToApi(rs.getString("action")));
-                    row.put("waiting", mapDbStatusToApi(rs.getString("status")));
-                    Object created = rs.getObject("created_at");
-                    row.put("createdTime", created == null ? null : created.toString());
-                    return row;
-                },
-                listParams.toArray()
-        );
-
-        long safeTotal = total == null ? 0L : total;
-        return ResponseEntity.ok(Map.of("data", data, "totalCount", safeTotal, "page", safePage, "pageSize", safePageSize));
+        return ResponseEntity.ok(Map.of(
+                "data", data,
+                "totalCount", resultPage.getTotalElements(),
+                "page", safePage,
+                "pageSize", safePageSize
+        ));
     }
 
     @Override
     public HttpEntity<?> getById(Integer orgId, Long id) {
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT tt.id, tt.terminal_id, t.name AS terminal_name, tt.person_id, p.full_name AS person_name, tt.action, tt.status, tt.created_at " +
-                        "FROM terminal_tasks tt JOIN terminals t ON t.id=tt.terminal_id LEFT JOIN persons p ON p.id=tt.person_id " +
-                        "WHERE tt.id=? AND t.organization_id=? AND t.deleted=false",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("terminalId", rs.getLong("terminal_id"));
-                    row.put("terminalName", rs.getString("terminal_name"));
-                    row.put("personId", rs.getObject("person_id") == null ? null : rs.getLong("person_id"));
-                    row.put("personName", rs.getString("person_name"));
-                    row.put("taskType", mapDbTaskTypeToApi(rs.getString("action")));
-                    row.put("waiting", mapDbStatusToApi(rs.getString("status")));
-                    Object created = rs.getObject("created_at");
-                    row.put("createdTime", created == null ? null : created.toString());
-                    return row;
-                },
-                id,
-                orgId
-        );
-
-        if (rows.isEmpty()) {
+        TaskRowProjection task = taskRepo.findDetail(orgId, id).orElse(null);
+        if (task == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Task topilmadi"));
         }
-        return ResponseEntity.ok(rows.get(0));
+        return ResponseEntity.ok(toTaskItem(task));
     }
 
     @Override
     public HttpEntity<?> getByPerson(Integer orgId, Long personId) {
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT tt.id, t.name AS terminal_name, tt.action, tt.status FROM terminal_tasks tt " +
-                        "JOIN terminals t ON t.id=tt.terminal_id " +
-                        "WHERE tt.person_id=? AND t.organization_id=? AND t.deleted=false ORDER BY tt.created_at DESC",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("terminalName", rs.getString("terminal_name"));
-                    row.put("taskType", mapDbTaskTypeToApi(rs.getString("action")));
-                    row.put("waiting", mapDbStatusToApi(rs.getString("status")));
-                    return row;
-                },
-                personId,
-                orgId
-        );
+        List<Map<String, Object>> rows = taskRepo.findByPerson(orgId, personId).stream()
+                .map(this::toTaskItem)
+                .toList();
 
         return ResponseEntity.ok(rows);
     }
@@ -171,6 +116,19 @@ public class TasksServiceImpl implements TasksService {
             case "add_all_persons" -> "clear-data";
             default -> action.toLowerCase();
         };
+    }
+
+    private Map<String, Object> toTaskItem(TaskRowProjection task) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", task.getId());
+        row.put("terminalId", task.getTerminalId());
+        row.put("terminalName", task.getTerminalName());
+        row.put("personId", task.getPersonId());
+        row.put("personName", task.getPersonName());
+        row.put("taskType", mapDbTaskTypeToApi(task.getAction()));
+        row.put("waiting", mapDbStatusToApi(task.getStatus()));
+        row.put("createdTime", task.getCreatedTime() == null ? null : task.getCreatedTime().toString());
+        return row;
     }
 }
 

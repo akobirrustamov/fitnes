@@ -1,6 +1,13 @@
 package com.example.backend.Services.PersonService;
 
+import com.example.backend.Entity.EventEntry;
+import com.example.backend.Entity.Payment;
+import com.example.backend.Entity.Person;
 import com.example.backend.Payload.req.*;
+import com.example.backend.Projection.EventRowProjection;
+import com.example.backend.Repository.EventEntryRepo;
+import com.example.backend.Repository.PaymentRepo;
+import com.example.backend.Repository.PersonRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -9,31 +16,40 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import jakarta.persistence.criteria.Predicate;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PersonServiceImpl implements PersonService {
 
-    private final JdbcTemplate jdbc;
-    private final Map<String, Boolean> columnExistsCache = new ConcurrentHashMap<>();
+    private final PersonRepo personRepo;
+    private final PaymentRepo paymentRepo;
+    private final EventEntryRepo eventEntryRepo;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Override
     public HttpEntity<?> getAll(Integer orgId,
@@ -56,160 +72,44 @@ public class PersonServiceImpl implements PersonService {
             ));
         }
 
-        StringBuilder where = new StringBuilder(" WHERE p.organization_id = ? AND p.deleted = false ");
-        List<Object> params = new ArrayList<>();
-        params.add(orgId);
+        Page<Person> personPage = personRepo.findAll(
+                buildPersonSpecification(orgId, clientFilter, active, isExpired, hasAccessCount, trainerId, search),
+                PageRequest.of(safePage - 1, safeLimit, Sort.by(Sort.Direction.DESC, "createdTime")));
 
-        if (hasColumn("persons", "is_staff")) {
-            where.append(" AND p.is_staff = ? ");
-            params.add(!clientFilter);
-        }
-
-        if (active != null) {
-            where.append(" AND p.active = ? ");
-            params.add(active);
-        }
-
-        if (isExpired != null && hasColumn("persons", "subscription_end")) {
-            if (Boolean.TRUE.equals(isExpired)) {
-                where.append(" AND p.subscription_end IS NOT NULL AND p.subscription_end < CURRENT_DATE ");
-            } else {
-                where.append(" AND (p.subscription_end IS NULL OR p.subscription_end >= CURRENT_DATE) ");
-            }
-        }
-
-        if (hasAccessCount != null && hasColumn("persons", "access_count")) {
-            where.append(Boolean.TRUE.equals(hasAccessCount)
-                    ? " AND COALESCE(p.access_count, 0) > 0 "
-                    : " AND COALESCE(p.access_count, 0) = 0 ");
-        }
-
-        if (trainerId != null && hasColumn("persons", "trainer_id")) {
-            where.append(" AND p.trainer_id = ? ");
-            params.add(trainerId);
-        }
-
-        if (search != null && !search.isBlank()) {
-            where.append(" AND (p.full_name ILIKE ? ");
-            params.add("%" + search.trim() + "%");
-            if (hasColumn("persons", "phone_number")) {
-                where.append(" OR p.phone_number ILIKE ? ");
-                params.add("%" + search.trim() + "%");
-            }
-            where.append(") ");
-        }
-
-        Long totalCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM persons p " + where,
-                Long.class,
-                params.toArray()
-        );
-
-        String selectSql = "SELECT p.id, " +
-                "p.full_name AS fullname, " +
-                "p.photo_url AS photoUrl, " +
-                colOr("persons", "phone_number", "p.phone_number", "NULL", "phoneNumber") + ", " +
-                colOr("persons", "gender", "p.gender", "NULL", "gender") + ", " +
-                colOr("persons", "birth_date", "p.birth_date", "NULL", "birthDate") + ", " +
-                colOr("persons", "location", "p.location", "NULL", "location") + ", " +
-                colOr("persons", "graphic_id", "p.graphic_id", "NULL", "graphicId") + ", " +
-                "p.active, " +
-                (hasColumn("persons", "is_staff") ? "(NOT p.is_staff)" : "true") + " AS isClient, " +
-                colOr("persons", "subscription_end", "p.subscription_end", "NULL", "subscriptionEndDate") + ", " +
-                colOr("persons", "access_count", "p.access_count", "0", "accessCount") + ", " +
-                colOr("persons", "debt", "p.debt", "0", "debt") + ", " +
-                colOr("persons", "trainer_id", "p.trainer_id", "NULL", "trainerId") + ", " +
-                (hasColumn("persons", "created_time") ? "p.created_time" : "p.created_at") + " AS createdTime " +
-                "FROM persons p " + where +
-                " ORDER BY " + (hasColumn("persons", "created_time") ? "p.created_time" : "p.created_at") + " DESC " +
-                " LIMIT ? OFFSET ?";
-
-        List<Object> pageParams = new ArrayList<>(params);
-        pageParams.add(safeLimit);
-        pageParams.add((safePage - 1L) * safeLimit);
-
-        List<Map<String, Object>> data = jdbc.query(selectSql, (rs, rowNum) -> mapPersonRow(rs), pageParams.toArray());
-        long safeTotal = totalCount == null ? 0L : totalCount;
+        List<Map<String, Object>> data = personPage.getContent().stream()
+                .map(this::toPersonListItem)
+                .toList();
 
         return ResponseEntity.ok(Map.of(
                 "data", data,
-                "totalCount", safeTotal,
+                "totalCount", personPage.getTotalElements(),
                 "page", safePage,
                 "limit", safeLimit,
-                "totalPages", (int) Math.ceil(safeTotal / (double) safeLimit)
+                "totalPages", personPage.getTotalPages()
         ));
     }
 
     @Override
     public HttpEntity<?> getById(Integer orgId, Long id) {
-        List<Map<String, Object>> personRows = jdbc.query(
-                "SELECT p.id, p.full_name AS fullname, p.photo_url AS photoUrl, " +
-                        colOr("persons", "phone_number", "p.phone_number", "NULL", "phoneNumber") + ", " +
-                        colOr("persons", "subscription_end", "p.subscription_end", "NULL", "subscriptionEndDate") + ", " +
-                        colOr("persons", "access_count", "p.access_count", "0", "accessCount") + ", " +
-                        colOr("persons", "debt", "p.debt", "0", "debt") + " " +
-                        "FROM persons p WHERE p.id=? AND p.organization_id=? AND p.deleted=false",
-                (rs, rowNum) -> {
-                    Map<String, Object> item = new LinkedHashMap<>();
-                    item.put("id", rs.getLong("id"));
-                    item.put("fullname", rs.getString("fullname"));
-                    item.put("photoUrl", rs.getString("photoUrl"));
-                    item.put("phoneNumber", rs.getString("phoneNumber"));
-                    item.put("subscriptionEndDate", getString(rs, "subscriptionEndDate"));
-                    item.put("accessCount", getInt(rs, "accessCount"));
-                    item.put("debt", getBigDecimal(rs, "debt"));
-                    return item;
-                },
-                id, orgId
-        );
-
-        if (personRows.isEmpty()) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
 
-        String paymentTimeCol = hasColumn("payments", "created_time") ? "created_time" : "payment_date";
-        String paymentTypeExpr = hasColumn("payments", "payment_type") ? "p.payment_type" : "'income'";
-        String categoryExpr = hasColumn("payments", "category")
-                ? "p.category"
-                : (hasColumn("payments", "category_id") ? "COALESCE(c.name_uz, 'zal')" : "'zal'");
+        List<Map<String, Object>> recentPayments = paymentRepo
+                .findAll(buildPaymentSpecification(orgId, id, null, null, null),
+                        PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdTime")))
+                .getContent()
+                .stream()
+                .map(this::toPaymentListItem)
+                .toList();
 
-        String paymentSql = "SELECT p.id, " + categoryExpr + " AS category, " +
-                "COALESCE(" + (hasColumn("payments", "price") ? "p.price" : "p.amount") + ",0) AS price, " +
-                paymentTypeExpr + " AS paymentType, p." + paymentTimeCol + " AS createdTime " +
-                "FROM payments p " +
-                (hasColumn("payments", "category_id") ? "LEFT JOIN categories c ON c.id = p.category_id " : "") +
-                "WHERE p.organization_id=? AND p.person_id=? " +
-                "ORDER BY p." + paymentTimeCol + " DESC LIMIT 10";
-
-        List<Map<String, Object>> recentPayments = jdbc.query(paymentSql, (rs, rowNum) -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", rs.getLong("id"));
-            item.put("category", rs.getString("category"));
-            item.put("price", getBigDecimal(rs, "price"));
-            item.put("paymentType", rs.getString("paymentType"));
-            item.put("createdTime", getString(rs, "createdTime"));
-            return item;
-        }, orgId, id);
-
-        List<Map<String, Object>> recentEvents = jdbc.query(
-                "SELECT e.id, e.direction, e.entry_time, COALESCE(t.name, 'Kirish') AS terminal_name " +
-                        "FROM entries e " +
-                        "LEFT JOIN terminals t ON t.id = e.terminal_id " +
-                        "WHERE e.organization_id=? AND e.person_id=? " +
-                        "ORDER BY e.entry_time DESC LIMIT 10",
-                (rs, rowNum) -> {
-                    Map<String, Object> item = new LinkedHashMap<>();
-                    item.put("id", rs.getLong("id"));
-                    item.put("type", "IN".equalsIgnoreCase(rs.getString("direction")) ? "enter" : "exit");
-                    item.put("datetime", getString(rs, "entry_time"));
-                    item.put("terminalName", rs.getString("terminal_name"));
-                    return item;
-                },
-                orgId, id
-        );
+        List<Map<String, Object>> recentEvents = eventEntryRepo.findTop10ByPerson(orgId, id).stream()
+                .map(this::toEventItem)
+                .toList();
 
         return ResponseEntity.ok(Map.of(
-                "person", personRows.get(0),
+                "person", toPersonDetailItem(person),
                 "recentPayments", recentPayments,
                 "recentEvents", recentEvents
         ));
@@ -222,31 +122,29 @@ public class PersonServiceImpl implements PersonService {
             return ResponseEntity.badRequest().body(Map.of("message", "fullname majburiy"));
         }
 
-        List<String> cols = new ArrayList<>(List.of("organization_id", "full_name", "photo_url", "active", "deleted", "created_at"));
-        List<Object> vals = new ArrayList<>(List.of(orgId, request.getFullname(), request.getPhotoUrl(),
-                request.getActive() == null || request.getActive(), false, LocalDateTime.now()));
+        Person saved = personRepo.save(Person.builder()
+                .organizationId(orgId)
+                .fullName(request.getFullname())
+                .photoUrl(request.getPhotoUrl())
+                .phoneNumber(request.getPhoneNumber())
+                .gender(request.getGender())
+                .birthDate(request.getBirthDate())
+                .location(request.getLocation())
+                .graphicId(request.getGraphicId())
+                .active(request.getActive() == null || request.getActive())
+                .isStaff(request.getIsClient() != null ? !request.getIsClient() : false)
+                .accessCount(0)
+                .debt(BigDecimal.ZERO)
+                .deleted(false)
+                .createdTime(LocalDateTime.now())
+                .updatedTime(null)
+                .build());
 
-        addIfColumn(cols, vals, "phone_number", request.getPhoneNumber());
-        addIfColumn(cols, vals, "gender", request.getGender());
-        addIfColumn(cols, vals, "birth_date", request.getBirthDate());
-        addIfColumn(cols, vals, "location", request.getLocation());
-        addIfColumn(cols, vals, "graphic_id", request.getGraphicId());
-        addIfColumn(cols, vals, "is_staff", request.getIsClient() != null ? !request.getIsClient() : false);
-        addIfColumn(cols, vals, "created_time", LocalDateTime.now());
-
-        String placeholders = String.join(",", Collections.nCopies(cols.size(), "?"));
-        String sql = "INSERT INTO persons(" + String.join(",", cols) + ") VALUES(" + placeholders + ") RETURNING id";
-        Long personId = jdbc.queryForObject(sql, Long.class, vals.toArray());
-
-        if (personId == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Shaxs yaratilmadi"));
-        }
-
-        createPersonTask(orgId, personId, "add");
-        createPersonTask(orgId, personId, "photo");
+        createPersonTask(orgId, saved.getId(), "add");
+        createPersonTask(orgId, saved.getId(), "photo");
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "id", personId,
+                "id", saved.getId(),
                 "message", "Shaxs muvaffaqiyatli yaratildi va terminallarga yuklandi"
         ));
     }
@@ -254,40 +152,20 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public HttpEntity<?> update(Integer orgId, Long id, PersonUpdateRequest request) {
-        if (!personExists(orgId, id)) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
 
-        StringBuilder set = new StringBuilder("full_name = COALESCE(?, full_name), active = COALESCE(?, active)");
-        List<Object> params = new ArrayList<>(List.of(request.getFullname(), request.getActive()));
-
-        if (hasColumn("persons", "phone_number")) {
-            set.append(", phone_number = COALESCE(?, phone_number)");
-            params.add(request.getPhoneNumber());
-        }
-        if (hasColumn("persons", "gender")) {
-            set.append(", gender = COALESCE(?, gender)");
-            params.add(request.getGender());
-        }
-        if (hasColumn("persons", "birth_date")) {
-            set.append(", birth_date = COALESCE(?, birth_date)");
-            params.add(request.getBirthDate());
-        }
-        if (hasColumn("persons", "location")) {
-            set.append(", location = COALESCE(?, location)");
-            params.add(request.getLocation());
-        }
-        if (hasColumn("persons", "graphic_id")) {
-            set.append(", graphic_id = COALESCE(?, graphic_id)");
-            params.add(request.getGraphicId());
-        }
-        if (hasColumn("persons", "updated_time")) {
-            set.append(", updated_time = NOW()");
-        }
-
-        params.add(id);
-        params.add(orgId);
-        jdbc.update("UPDATE persons SET " + set + " WHERE id=? AND organization_id=? AND deleted=false", params.toArray());
+        if (request.getFullname() != null && !request.getFullname().isBlank()) person.setFullName(request.getFullname());
+        if (request.getActive() != null) person.setActive(request.getActive());
+        if (request.getPhoneNumber() != null) person.setPhoneNumber(request.getPhoneNumber());
+        if (request.getGender() != null) person.setGender(request.getGender());
+        if (request.getBirthDate() != null) person.setBirthDate(request.getBirthDate());
+        if (request.getLocation() != null) person.setLocation(request.getLocation());
+        if (request.getGraphicId() != null) person.setGraphicId(request.getGraphicId());
+        person.setUpdatedTime(LocalDateTime.now());
+        personRepo.save(person);
 
         createPersonTask(orgId, id, "update");
         return ResponseEntity.ok(Map.of("message", "Shaxs muvaffaqiyatli yangilandi"));
@@ -296,17 +174,17 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public HttpEntity<?> delete(Integer orgId, Long id) {
-        if (!personExists(orgId, id)) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
 
-        jdbc.update("UPDATE persons SET deleted=true, active=false WHERE id=? AND organization_id=?", id, orgId);
+        person.setDeleted(true);
+        person.setActive(false);
+        person.setUpdatedTime(LocalDateTime.now());
+        personRepo.save(person);
 
-        if (hasColumn("payments", "deleted")) {
-            jdbc.update("UPDATE payments SET deleted=true WHERE person_id=? AND organization_id=?", id, orgId);
-        } else {
-            jdbc.update("DELETE FROM payments WHERE person_id=? AND organization_id=?", id, orgId);
-        }
+        paymentRepo.deleteAll(paymentRepo.findByOrganizationIdAndPersonId(orgId, id));
 
         createPersonTask(orgId, id, "delete");
         return ResponseEntity.ok(Map.of("message", "Shaxs muvaffaqiyatli o'chirildi"));
@@ -315,10 +193,13 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public HttpEntity<?> updatePhoto(Integer orgId, Long id, PersonPhotoUpdateRequest request) {
-        if (!personExists(orgId, id)) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
-        jdbc.update("UPDATE persons SET photo_url=? WHERE id=? AND organization_id=?", request.getPhotoUrl(), id, orgId);
+        person.setPhotoUrl(request.getPhotoUrl());
+        person.setUpdatedTime(LocalDateTime.now());
+        personRepo.save(person);
         createPersonTask(orgId, id, "photo");
         return ResponseEntity.ok(Map.of("message", "Rasm muvaffaqiyatli yangilandi"));
     }
@@ -326,43 +207,25 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public HttpEntity<?> extendSubscription(Integer orgId, Long id, PersonExtendSubscriptionRequest request) {
-        if (!personExists(orgId, id)) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
 
         BigDecimal price = nvl(request.getPrice());
         BigDecimal paidAmount = nvl(request.getPaidAmount());
         BigDecimal addedDebt = price.subtract(paidAmount).max(BigDecimal.ZERO);
-        BigDecimal oldDebt = personDebt(orgId, id);
+        BigDecimal oldDebt = nvl(person.getDebt());
         BigDecimal newDebt = oldDebt.add(addedDebt);
 
-        List<Object> updateParams = new ArrayList<>();
-        StringBuilder set = new StringBuilder();
+        person.setSubscriptionEnd(request.getEndDate());
+        if (request.getAccessCount() != null) person.setAccessCount(request.getAccessCount());
+        person.setDebt(newDebt);
+        person.setUpdatedTime(LocalDateTime.now());
+        personRepo.save(person);
 
-        if (hasColumn("persons", "subscription_end")) {
-            set.append("subscription_end = ?, ");
-            updateParams.add(request.getEndDate());
-        }
-        if (hasColumn("persons", "access_count")) {
-            set.append("access_count = COALESCE(?, access_count), ");
-            updateParams.add(request.getAccessCount());
-        }
-        if (hasColumn("persons", "debt")) {
-            set.append("debt = ?, ");
-            updateParams.add(newDebt);
-        }
-
-        if (set.length() == 0) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Obuna maydonlari mavjud emas"));
-        }
-
-        set.setLength(set.length() - 2);
-        updateParams.add(id);
-        updateParams.add(orgId);
-        jdbc.update("UPDATE persons SET " + set + " WHERE id=? AND organization_id=? AND deleted=false", updateParams.toArray());
-
-        insertPayment(orgId, id, "zal", "expense", price, "Obuna narxi");
-        insertPayment(orgId, id, "zal", "income", paidAmount, "Obuna to'lovi");
+        paymentRepo.save(buildPayment(orgId, id, "zal", "expense", price, "Obuna narxi"));
+        paymentRepo.save(buildPayment(orgId, id, "zal", "income", paidAmount, "Obuna to'lovi"));
 
         createPersonTask(orgId, id, "update");
 
@@ -377,34 +240,37 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public HttpEntity<?> payDebt(Integer orgId, Long id, PersonDebtPayRequest request) {
-        if (!personExists(orgId, id)) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
 
         BigDecimal amount = nvl(request.getAmount());
         String category = (request.getCategory() == null || request.getCategory().isBlank()) ? "zal" : request.getCategory();
-        insertPayment(orgId, id, category, "income", amount, "Qarz to'lovi");
+        paymentRepo.save(buildPayment(orgId, id, category, "income", amount, "Qarz to'lovi"));
 
         return ResponseEntity.ok(Map.of(
                 "message", "Qarz muvaffaqiyatli to'landi",
                 "paidAmount", amount,
-                "remainingDebt", personDebt(orgId, id)
+                "remainingDebt", nvl(person.getDebt())
         ));
     }
 
     @Override
     @Transactional
     public HttpEntity<?> clearAllDebts(Integer orgId, Long id) {
-        if (!personExists(orgId, id)) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
 
-        if (hasColumn("persons", "debt")) {
-            jdbc.update("UPDATE persons SET debt=0 WHERE id=? AND organization_id=?", id, orgId);
-        }
-        if (hasColumn("payments", "is_important")) {
-            jdbc.update("UPDATE payments SET is_important=false WHERE person_id=? AND organization_id=?", id, orgId);
-        }
+        person.setDebt(BigDecimal.ZERO);
+        person.setUpdatedTime(LocalDateTime.now());
+        personRepo.save(person);
+
+        List<Payment> payments = paymentRepo.findAll(buildPaymentSpecification(orgId, id, null, null, null));
+        payments.forEach(payment -> payment.setImportant(false));
+        paymentRepo.saveAll(payments);
 
         return ResponseEntity.ok(Map.of("message", "Barcha qarzlar muvaffaqiyatli tozalandi"));
     }
@@ -412,21 +278,20 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public HttpEntity<?> assignTrainer(Integer orgId, Long id, PersonAssignTrainerRequest request) {
-        if (!personExists(orgId, id)) {
+        Person person = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (person == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
-        if (!hasColumn("persons", "trainer_id")) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "trainer_id ustuni mavjud emas"));
-        }
-
-        jdbc.update("UPDATE persons SET trainer_id=? WHERE id=? AND organization_id=?", request.getTrainerId(), id, orgId);
+        person.setTrainerId(request.getTrainerId() == null ? null : request.getTrainerId().longValue());
+        person.setUpdatedTime(LocalDateTime.now());
+        personRepo.save(person);
         return ResponseEntity.ok(Map.of("message", "Murabbiy muvaffaqiyatli biriktirildi"));
     }
 
     @Override
     @Transactional
     public HttpEntity<?> refreshInFaceID(Integer orgId, Long id) {
-        if (!personExists(orgId, id)) {
+        if (!personRepo.existsByIdAndOrganizationIdAndDeletedFalse(id, orgId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Shaxs topilmadi"));
         }
 
@@ -440,35 +305,9 @@ public class PersonServiceImpl implements PersonService {
     @Override
     public HttpEntity<?> downloadExcel(Integer orgId, Boolean isClient) {
         Boolean clientFilter = (isClient == null) ? Boolean.TRUE : isClient;
-        String where = " WHERE p.organization_id = ? AND p.deleted = false ";
-        List<Object> params = new ArrayList<>();
-        params.add(orgId);
-
-        if (hasColumn("persons", "is_staff")) {
-            where += " AND p.is_staff = ? ";
-            params.add(!clientFilter);
-        }
-
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT p.id, p.full_name, p.photo_url, p.active, " +
-                        colOr("persons", "phone_number", "p.phone_number", "NULL", "phone_number") + ", " +
-                        colOr("persons", "debt", "p.debt", "0", "debt") + ", " +
-                        colOr("persons", "subscription_end", "p.subscription_end", "NULL", "subscription_end") +
-                        " FROM persons p " + where +
-                        " ORDER BY p.id DESC",
-                (rs, rowNum) -> {
-                    Map<String, Object> item = new LinkedHashMap<>();
-                    item.put("id", rs.getLong("id"));
-                    item.put("full_name", rs.getString("full_name"));
-                    item.put("phone_number", rs.getString("phone_number"));
-                    item.put("photo_url", rs.getString("photo_url"));
-                    item.put("active", rs.getBoolean("active"));
-                    item.put("subscription_end", getString(rs, "subscription_end"));
-                    item.put("debt", getBigDecimal(rs, "debt"));
-                    return item;
-                },
-                params.toArray()
-        );
+        List<Person> persons = personRepo.findAll(
+                buildPersonSpecification(orgId, clientFilter, null, null, null, null, null),
+                Sort.by(Sort.Direction.DESC, "id"));
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Persons");
@@ -487,14 +326,14 @@ public class PersonServiceImpl implements PersonService {
             }
 
             int idx = 1;
-            for (Map<String, Object> row : rows) {
+            for (Person person : persons) {
                 Row r = sheet.createRow(idx++);
-                r.createCell(0).setCellValue(((Number) row.get("id")).longValue());
-                r.createCell(1).setCellValue(Objects.toString(row.get("full_name"), ""));
-                r.createCell(2).setCellValue(Objects.toString(row.get("phone_number"), ""));
-                r.createCell(3).setCellValue(Boolean.TRUE.equals(row.get("active")) ? "Ha" : "Yo'q");
-                r.createCell(4).setCellValue(Objects.toString(row.get("subscription_end"), ""));
-                r.createCell(5).setCellValue(Objects.toString(row.get("debt"), "0"));
+                r.createCell(0).setCellValue(person.getId());
+                r.createCell(1).setCellValue(Objects.toString(person.getFullName(), ""));
+                r.createCell(2).setCellValue(Objects.toString(person.getPhoneNumber(), ""));
+                r.createCell(3).setCellValue(person.isActive() ? "Ha" : "Yo'q");
+                r.createCell(4).setCellValue(person.getSubscriptionEnd() == null ? "" : person.getSubscriptionEnd().toString());
+                r.createCell(5).setCellValue(person.getDebt() == null ? "0" : person.getDebt().toString());
             }
 
             for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
@@ -504,7 +343,9 @@ public class PersonServiceImpl implements PersonService {
 
             String fileName = "persons_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".xlsx";
             Path filePath = targetDir.resolve(fileName);
-            workbook.write(Files.newOutputStream(filePath));
+            try (OutputStream out = Files.newOutputStream(filePath)) {
+                workbook.write(out);
+            }
 
             String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
             return ResponseEntity.ok(Map.of("url", base + "/downloads/" + fileName));
@@ -516,62 +357,8 @@ public class PersonServiceImpl implements PersonService {
         }
     }
 
-    private Map<String, Object> mapPersonRow(ResultSet rs) throws java.sql.SQLException {
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("id", rs.getLong("id"));
-        row.put("fullname", rs.getString("fullname"));
-        row.put("photoUrl", rs.getString("photoUrl"));
-        row.put("phoneNumber", rs.getString("phoneNumber"));
-        row.put("gender", rs.getString("gender"));
-        row.put("birthDate", getString(rs, "birthDate"));
-        row.put("location", rs.getString("location"));
-        row.put("graphicId", getInt(rs, "graphicId"));
-        row.put("active", rs.getBoolean("active"));
-        row.put("isClient", rs.getBoolean("isClient"));
-        row.put("subscriptionEndDate", getString(rs, "subscriptionEndDate"));
-        row.put("accessCount", getInt(rs, "accessCount"));
-        row.put("debt", getBigDecimal(rs, "debt"));
-        row.put("trainerId", getInt(rs, "trainerId"));
-        row.put("createdTime", getString(rs, "createdTime"));
-        return row;
-    }
-
-    private String getString(ResultSet rs, String column) throws java.sql.SQLException {
-        Object obj = rs.getObject(column);
-        return obj == null ? null : obj.toString();
-    }
-
-    private Integer getInt(ResultSet rs, String column) throws java.sql.SQLException {
-        Object obj = rs.getObject(column);
-        return obj == null ? null : ((Number) obj).intValue();
-    }
-
-    private BigDecimal getBigDecimal(ResultSet rs, String column) throws java.sql.SQLException {
-        BigDecimal v = rs.getBigDecimal(column);
-        return v == null ? BigDecimal.ZERO : v;
-    }
-
     private BigDecimal nvl(BigDecimal val) {
         return val == null ? BigDecimal.ZERO : val;
-    }
-
-    private boolean personExists(Integer orgId, Long personId) {
-        Boolean exists = jdbc.queryForObject(
-                "SELECT EXISTS(SELECT 1 FROM persons WHERE id=? AND organization_id=? AND deleted=false)",
-                Boolean.class,
-                personId, orgId
-        );
-        return Boolean.TRUE.equals(exists);
-    }
-
-    private BigDecimal personDebt(Integer orgId, Long personId) {
-        if (!hasColumn("persons", "debt")) return BigDecimal.ZERO;
-        BigDecimal debt = jdbc.queryForObject(
-                "SELECT COALESCE(debt, 0) FROM persons WHERE id=? AND organization_id=?",
-                BigDecimal.class,
-                personId, orgId
-        );
-        return debt == null ? BigDecimal.ZERO : debt;
     }
 
     private void createPersonTask(Integer orgId, Long personId, String action) {
@@ -583,81 +370,143 @@ public class PersonServiceImpl implements PersonService {
         }
     }
 
-    private void insertPayment(Integer orgId,
-                               Long personId,
-                               String category,
-                               String paymentType,
-                               BigDecimal amount,
-                               String description) {
-        List<String> cols = new ArrayList<>(List.of("organization_id", "person_id"));
-        List<Object> vals = new ArrayList<>(List.of(orgId, personId));
-
-        if (hasColumn("payments", "category")) {
-            cols.add("category");
-            vals.add(category);
-        } else if (hasColumn("payments", "category_id")) {
-            cols.add("category_id");
-            vals.add(null);
-        }
-
-        if (hasColumn("payments", "payment_type")) {
-            cols.add("payment_type");
-            vals.add(paymentType);
-        }
-        if (hasColumn("payments", "price")) {
-            cols.add("price");
-            vals.add(amount);
-        }
-        if (hasColumn("payments", "amount")) {
-            cols.add("amount");
-            vals.add(amount);
-        }
-        if (hasColumn("payments", "description")) {
-            cols.add("description");
-            vals.add(description);
-        }
-        if (hasColumn("payments", "is_important")) {
-            cols.add("is_important");
-            vals.add(true);
-        }
-        if (hasColumn("payments", "created_time")) {
-            cols.add("created_time");
-            vals.add(LocalDateTime.now());
-        }
-        if (hasColumn("payments", "payment_date")) {
-            cols.add("payment_date");
-            vals.add(LocalDateTime.now());
-        }
-
-        String placeholders = String.join(",", Collections.nCopies(cols.size(), "?"));
-        jdbc.update("INSERT INTO payments(" + String.join(",", cols) + ") VALUES(" + placeholders + ")", vals.toArray());
+    private Payment buildPayment(Integer orgId,
+                                 Long personId,
+                                 String category,
+                                 String paymentType,
+                                 BigDecimal amount,
+                                 String description) {
+        LocalDateTime now = LocalDateTime.now();
+        return Payment.builder()
+                .organizationId(orgId)
+                .personId(personId)
+                .category(category)
+                .amount(nvl(amount))
+                .price(nvl(amount))
+                .paymentType(paymentType)
+                .isImportant(true)
+                .description(description)
+                .paymentDate(now)
+                .createdTime(now)
+                .build();
     }
 
-    private boolean hasColumn(String table, String column) {
-        String key = table + "." + column;
-        return columnExistsCache.computeIfAbsent(key, k -> {
-            try {
-                Boolean exists = jdbc.queryForObject(
-                        "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ? AND column_name = ?)",
-                        Boolean.class,
-                        table, column
-                );
-                return Boolean.TRUE.equals(exists);
-            } catch (Exception e) {
-                return false;
+    private Specification<Person> buildPersonSpecification(Integer orgId,
+                                                           Boolean isClient,
+                                                           Boolean active,
+                                                           Boolean isExpired,
+                                                           Boolean hasAccessCount,
+                                                           Integer trainerId,
+                                                           String search) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("organizationId"), orgId));
+            predicates.add(cb.isFalse(root.get("deleted")));
+
+            if (isClient != null) {
+                predicates.add(cb.equal(root.get("isStaff"), !isClient));
             }
-        });
+            if (active != null) {
+                predicates.add(cb.equal(root.get("active"), active));
+            }
+            if (isExpired != null) {
+                if (Boolean.TRUE.equals(isExpired)) {
+                    predicates.add(cb.and(
+                            cb.isNotNull(root.get("subscriptionEnd")),
+                            cb.lessThan(root.get("subscriptionEnd"), cb.currentDate())));
+                } else {
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("subscriptionEnd")),
+                            cb.greaterThanOrEqualTo(root.get("subscriptionEnd"), cb.currentDate())));
+                }
+            }
+            if (hasAccessCount != null) {
+                predicates.add(Boolean.TRUE.equals(hasAccessCount)
+                        ? cb.gt(cb.coalesce(root.get("accessCount"), 0), 0)
+                        : cb.equal(cb.coalesce(root.get("accessCount"), 0), 0));
+            }
+            if (trainerId != null) {
+                predicates.add(cb.equal(root.get("trainerId"), trainerId.longValue()));
+            }
+            if (search != null && !search.isBlank()) {
+                String q = "%" + search.trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("fullName")), q),
+                        cb.like(cb.lower(cb.coalesce(root.get("phoneNumber"), "")), q)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
-    private void addIfColumn(List<String> cols, List<Object> vals, String column, Object value) {
-        if (hasColumn("persons", column)) {
-            cols.add(column);
-            vals.add(value);
-        }
+    private Specification<Payment> buildPaymentSpecification(Integer orgId,
+                                                             Long personId,
+                                                             String category,
+                                                             String paymentType,
+                                                             Boolean isImportant) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("organizationId"), orgId));
+
+            if (personId != null) {
+                predicates.add(cb.equal(root.get("personId"), personId));
+            }
+            if (category != null && !category.isBlank()) {
+                predicates.add(cb.equal(cb.lower(cb.coalesce(root.get("category"), "")), category.trim().toLowerCase()));
+            }
+            if (paymentType != null && !paymentType.isBlank()) {
+                predicates.add(cb.equal(cb.lower(cb.coalesce(root.get("paymentType"), "")), paymentType.trim().toLowerCase()));
+            }
+            if (isImportant != null) {
+                predicates.add(cb.equal(root.get("isImportant"), isImportant));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
-    private String colOr(String table, String column, String existingExpr, String fallbackExpr, String alias) {
-        return (hasColumn(table, column) ? existingExpr : fallbackExpr) + " AS " + alias;
+    private Map<String, Object> toPersonListItem(Person person) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", person.getId());
+        row.put("fullname", person.getFullName());
+        row.put("photoUrl", person.getPhotoUrl());
+        row.put("phoneNumber", person.getPhoneNumber());
+        row.put("gender", person.getGender());
+        row.put("birthDate", person.getBirthDate() == null ? null : person.getBirthDate().toString());
+        row.put("location", person.getLocation());
+        row.put("graphicId", person.getGraphicId());
+        row.put("active", person.isActive());
+        row.put("isClient", !person.isStaff());
+        row.put("subscriptionEndDate", person.getSubscriptionEnd() == null ? null : person.getSubscriptionEnd().toString());
+        row.put("accessCount", person.getAccessCount());
+        row.put("debt", person.getDebt() == null ? BigDecimal.ZERO : person.getDebt());
+        row.put("trainerId", person.getTrainerId() == null ? null : person.getTrainerId().intValue());
+        row.put("createdTime", person.getCreatedTime() == null ? null : person.getCreatedTime().toString());
+        return row;
+    }
+
+    private Map<String, Object> toPersonDetailItem(Person person) {
+        return toPersonListItem(person);
+    }
+
+    private Map<String, Object> toPaymentListItem(Payment payment) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", payment.getId());
+        row.put("category", payment.getCategory());
+        row.put("price", payment.getPrice() != null ? payment.getPrice() : payment.getAmount());
+        row.put("paymentType", payment.getPaymentType());
+        row.put("createdTime", payment.getCreatedTime() == null ? null : payment.getCreatedTime().toString());
+        return row;
+    }
+
+    private Map<String, Object> toEventItem(EventRowProjection event) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", event.getId());
+        row.put("type", "IN".equalsIgnoreCase(event.getDirection()) ? "enter" : "exit");
+        row.put("datetime", event.getDatetime() == null ? null : event.getDatetime().toString());
+        row.put("terminalName", event.getTerminalName());
+        return row;
     }
 }
 

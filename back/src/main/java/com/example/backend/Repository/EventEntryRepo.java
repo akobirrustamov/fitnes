@@ -123,5 +123,26 @@ public interface EventEntryRepo extends JpaRepository<EventEntry, Long> {
             """, nativeQuery = true)
     Optional<EventRowProjection> findLastByPerson(@Param("orgId") Integer orgId,
                                                   @Param("personId") Long personId);
+
+    @Query(value = """
+            SELECT
+                e.id AS id,
+                e.person_id AS personId,
+                p.full_name AS personName,
+                p.photo_url AS personPhoto,
+                e.terminal_id AS terminalId,
+                t.name AS terminalName,
+                e.direction AS direction,
+                e.entry_time AS datetime
+            FROM entries e
+            LEFT JOIN persons p ON p.id = e.person_id
+            LEFT JOIN terminals t ON t.id = e.terminal_id
+            WHERE e.organization_id = :orgId
+              AND e.person_id = :personId
+            ORDER BY e.entry_time DESC
+            LIMIT 10
+            """, nativeQuery = true)
+    List<EventRowProjection> findTop10ByPerson(@Param("orgId") Integer orgId,
+                                               @Param("personId") Long personId);
 }
 

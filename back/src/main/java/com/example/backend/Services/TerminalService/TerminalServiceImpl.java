@@ -1,7 +1,14 @@
 package com.example.backend.Services.TerminalService;
 
+import com.example.backend.Entity.ApiSettings;
+import com.example.backend.Entity.Terminal;
+import com.example.backend.Entity.TerminalTask;
 import com.example.backend.Payload.req.TerminalAddRequest;
 import com.example.backend.Payload.req.TerminalUpdateRequest;
+import com.example.backend.Repository.ApiSettingsRepo;
+import com.example.backend.Repository.PersonRepo;
+import com.example.backend.Repository.TaskRepo;
+import com.example.backend.Repository.TerminalRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -10,29 +17,34 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TerminalServiceImpl implements TerminalService {
 
-    private final JdbcTemplate jdbc;
-    private final Map<String, Boolean> columnExistsCache = new ConcurrentHashMap<>();
+    private final TerminalRepo terminalRepo;
+    private final ApiSettingsRepo apiSettingsRepo;
+    private final TaskRepo taskRepo;
+    private final PersonRepo personRepo;
 
     @Override
     public HttpEntity<?> getAll(Integer orgId, String part, int page, int pageSize) {
@@ -45,71 +57,19 @@ public class TerminalServiceImpl implements TerminalService {
             return ResponseEntity.badRequest().body(Map.of("message", "part kamida 3 ta belgidan iborat bo'lishi kerak"));
         }
 
-        StringBuilder where = new StringBuilder(" WHERE t.organization_id=? AND t.deleted=false ");
-        List<Object> params = new ArrayList<>();
-        params.add(orgId);
+        Page<Terminal> resultPage = (part == null || part.isBlank())
+                ? terminalRepo.findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(
+                        orgId, PageRequest.of(safePage - 1, safePageSize))
+                : terminalRepo.searchByOrganization(
+                        orgId, part.trim(), PageRequest.of(safePage - 1, safePageSize));
 
-        if (part != null && !part.isBlank()) {
-            where.append(" AND (");
-            where.append("t.name ILIKE ? OR t.description ILIKE ? OR t.ip ILIKE ? OR t.login ILIKE ? OR t.model ILIKE ?");
-            where.append(") ");
-            String q = "%" + part.trim() + "%";
-            params.add(q);
-            params.add(q);
-            params.add(q);
-            params.add(q);
-            params.add(q);
-        }
+        List<Map<String, Object>> data = resultPage.getContent().stream()
+                .map(t -> toTerminalItem(t, false))
+                .toList();
 
-        Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM terminals t " + where,
-                Long.class,
-                params.toArray()
-        );
-
-        List<Object> listParams = new ArrayList<>(params);
-        listParams.add(safePageSize);
-        listParams.add((safePage - 1L) * safePageSize);
-
-        String lastOnlineExpr = hasColumn("terminals", "last_online") ? "t.last_online" : "NULL";
-        String onlineExpr = hasColumn("terminals", "is_online")
-                ? "t.is_online"
-                : (hasColumn("terminals", "last_online")
-                ? "(t.last_online >= NOW() - INTERVAL '5 minutes')"
-                : "false");
-
-        List<Map<String, Object>> data = jdbc.query(
-                "SELECT t.id, t.organization_id, t.name, t.description, t.filter, t.created_at, " +
-                        lastOnlineExpr + " AS last_online, t.ip, t.login, t.model, t.deleted, t.is_coming, " +
-                        onlineExpr + " AS is_online " +
-                        "FROM terminals t " + where +
-                        " ORDER BY t.created_at DESC LIMIT ? OFFSET ?",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("organizationId", rs.getInt("organization_id"));
-                    row.put("name", rs.getString("name"));
-                    row.put("description", rs.getString("description"));
-                    row.put("filter", rs.getString("filter"));
-                    Object created = rs.getObject("created_at");
-                    row.put("createdTime", created == null ? null : created.toString());
-                    Object last = rs.getObject("last_online");
-                    row.put("lastOnline", last == null ? null : last.toString());
-                    row.put("ip", rs.getString("ip"));
-                    row.put("login", rs.getString("login"));
-                    row.put("model", rs.getString("model"));
-                    row.put("deleted", rs.getBoolean("deleted"));
-                    row.put("isComing", rs.getBoolean("is_coming"));
-                    row.put("isOnline", rs.getBoolean("is_online"));
-                    return row;
-                },
-                listParams.toArray()
-        );
-
-        long safeTotal = total == null ? 0L : total;
         return ResponseEntity.ok(Map.of(
                 "data", data,
-                "totalCount", safeTotal,
+                "totalCount", resultPage.getTotalElements(),
                 "page", safePage,
                 "pageSize", safePageSize
         ));
@@ -119,88 +79,21 @@ public class TerminalServiceImpl implements TerminalService {
     public HttpEntity<?> getById(Integer orgId, Long id) {
         ensureSettings();
 
-        String lastOnlineExpr = hasColumn("terminals", "last_online") ? "t.last_online" : "NULL";
-        String onlineExpr = hasColumn("terminals", "is_online")
-                ? "t.is_online"
-                : (hasColumn("terminals", "last_online")
-                ? "(t.last_online >= NOW() - INTERVAL '5 minutes')"
-                : "false");
-
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT t.id, t.organization_id, t.name, t.description, t.filter, t.ip, t.login, t.password, t.model, " +
-                        "t.is_coming, " + onlineExpr + " AS is_online, " + lastOnlineExpr + " AS last_online " +
-                        "FROM terminals t WHERE t.id=? AND t.organization_id=? AND t.deleted=false",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("organizationId", rs.getInt("organization_id"));
-                    row.put("name", rs.getString("name"));
-                    row.put("description", rs.getString("description"));
-                    row.put("filter", rs.getString("filter"));
-                    row.put("ip", rs.getString("ip"));
-                    row.put("login", rs.getString("login"));
-                    row.put("password", rs.getString("password"));
-                    row.put("model", rs.getString("model"));
-                    row.put("isComing", rs.getBoolean("is_coming"));
-                    row.put("isOnline", rs.getBoolean("is_online"));
-                    Object last = rs.getObject("last_online");
-                    row.put("lastOnline", last == null ? null : last.toString());
-                    return row;
-                },
-                id,
-                orgId
-        );
-
-        if (rows.isEmpty()) {
+        Terminal terminal = terminalRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (terminal == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Terminal topilmadi"));
         }
 
-        return ResponseEntity.ok(rows.get(0));
+        return ResponseEntity.ok(toTerminalItem(terminal, true));
     }
 
     @Override
     public HttpEntity<?> download(Integer orgId, String part) {
         ensureSettings();
 
-        StringBuilder where = new StringBuilder(" WHERE t.organization_id=? AND t.deleted=false ");
-        List<Object> params = new ArrayList<>();
-        params.add(orgId);
-
-        if (part != null && !part.isBlank()) {
-            where.append(" AND (t.name ILIKE ? OR t.description ILIKE ? OR t.ip ILIKE ? OR t.login ILIKE ? OR t.model ILIKE ?) ");
-            String q = "%" + part.trim() + "%";
-            params.add(q);
-            params.add(q);
-            params.add(q);
-            params.add(q);
-            params.add(q);
-        }
-
-        String lastOnlineExpr = hasColumn("terminals", "last_online") ? "t.last_online" : "NULL";
-
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT t.id, t.name, t.description, t.filter, t.created_at, " + lastOnlineExpr + " AS last_online, " +
-                        "t.ip, t.login, t.model, t.is_coming " +
-                        "FROM terminals t " + where +
-                        " ORDER BY t.created_at DESC",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("name", rs.getString("name"));
-                    row.put("description", rs.getString("description"));
-                    row.put("filter", rs.getString("filter"));
-                    Object created = rs.getObject("created_at");
-                    row.put("createdTime", created == null ? null : created.toString());
-                    Object last = rs.getObject("last_online");
-                    row.put("lastOnline", last == null ? null : last.toString());
-                    row.put("ip", rs.getString("ip"));
-                    row.put("login", rs.getString("login"));
-                    row.put("model", rs.getString("model"));
-                    row.put("isComing", rs.getBoolean("is_coming"));
-                    return row;
-                },
-                params.toArray()
-        );
+        List<Terminal> terminals = (part == null || part.isBlank())
+                ? terminalRepo.findByOrganizationIdAndDeletedFalseOrderByCreatedAtDesc(orgId)
+                : terminalRepo.searchAllByOrganization(orgId, part.trim());
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Terminals");
@@ -219,7 +112,8 @@ public class TerminalServiceImpl implements TerminalService {
             }
 
             int idx = 1;
-            for (Map<String, Object> row : rows) {
+            for (Terminal terminal : terminals) {
+                Map<String, Object> row = toTerminalItem(terminal, false);
                 Row r = sheet.createRow(idx++);
                 r.createCell(0).setCellValue(((Number) row.get("id")).longValue());
                 r.createCell(1).setCellValue(String.valueOf(row.get("name") == null ? "" : row.get("name")));
@@ -240,7 +134,9 @@ public class TerminalServiceImpl implements TerminalService {
 
             String fileName = "terminals_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".xlsx";
             Path filePath = targetDir.resolve(fileName);
-            workbook.write(Files.newOutputStream(filePath));
+            try (OutputStream out = Files.newOutputStream(filePath)) {
+                workbook.write(out);
+            }
 
             String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
             return ResponseEntity.ok(Map.of("url", base + "/downloads/" + fileName));
@@ -266,52 +162,48 @@ public class TerminalServiceImpl implements TerminalService {
             return ResponseEntity.badRequest().body(Map.of("message", "password majburiy"));
         }
 
-        Integer currentCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM terminals WHERE organization_id=? AND deleted=false",
-                Integer.class,
-                orgId
-        );
+        long currentCount = terminalRepo.countByOrganizationIdAndDeletedFalse(orgId);
         int maxCount = maxTerminalsCount();
-        if ((currentCount == null ? 0 : currentCount) >= maxCount) {
+        if (currentCount >= maxCount) {
             return ResponseEntity.badRequest().body(Map.of(
                     "errorCode", "T001",
                     "message", "Terminallar soni limitdan oshdi"
             ));
         }
 
-        Integer result = jdbc.queryForObject(
-                "SELECT add_terminal(?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                Integer.class,
-                orgId,
-                request.getName(),
-                request.getDescription(),
-                request.getIp(),
-                request.getLogin(),
-                request.getPassword(),
-                request.getModel(),
-                request.getFilter(),
-                request.getIsComing() != null && request.getIsComing()
-        );
-
-        int code = result == null ? -1 : result;
-        if (code == -2) {
+        String ip = request.getIp() == null ? null : request.getIp().trim();
+        if (ip != null && !ip.isBlank() && terminalRepo.existsByIpAndDeletedFalse(ip)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                     "errorCode", "T002",
                     "message", "Bunday IP manzil allaqachon mavjud"
             ));
         }
-        if (code < 0) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Terminal yaratib bo'lmadi"));
-        }
 
-        try {
-            jdbc.update("SELECT create_terminal_tasks(?, ?, ?)", orgId, code, "add_all_persons");
-        } catch (Exception e) {
-            log.warn("create_terminal_tasks xatosi: {}", e.getMessage());
-        }
+        Terminal saved = terminalRepo.save(Terminal.builder()
+                .organizationId(orgId)
+                .name(request.getName())
+                .description(request.getDescription())
+                .ip(ip)
+                .login(request.getLogin())
+                .password(request.getPassword())
+                .model(request.getModel())
+                .filter(request.getFilter())
+                .isComing(request.getIsComing() != null && request.getIsComing())
+                .active(true)
+                .deleted(false)
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        taskRepo.save(TerminalTask.builder()
+                .terminalId(saved.getId())
+                .personId(null)
+                .action("add_all_persons")
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .build());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "terminalId", code,
+                "terminalId", saved.getId(),
                 "message", "Terminal muvaffaqiyatli qo'shildi"
         ));
     }
@@ -321,43 +213,28 @@ public class TerminalServiceImpl implements TerminalService {
     public HttpEntity<?> update(Integer orgId, Long id, TerminalUpdateRequest request) {
         ensureSettings();
 
-        if (!terminalExists(orgId, id)) {
+        Terminal terminal = terminalRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (terminal == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Terminal topilmadi"));
         }
 
-        try {
-            jdbc.update(
-                    "UPDATE terminals SET " +
-                            "name = COALESCE(?, name), " +
-                            "description = COALESCE(?, description), " +
-                            "filter = COALESCE(?, filter), " +
-                            "is_coming = COALESCE(?, is_coming), " +
-                            "ip = COALESCE(?, ip), " +
-                            "login = COALESCE(?, login), " +
-                            "password = COALESCE(?, password), " +
-                            "model = COALESCE(?, model) " +
-                            "WHERE id=? AND organization_id=? AND deleted=false",
-                    request.getName(),
-                    request.getDescription(),
-                    request.getFilter(),
-                    request.getIsComing(),
-                    request.getIp(),
-                    request.getLogin(),
-                    request.getPassword(),
-                    request.getModel(),
-                    id,
-                    orgId
-            );
-        } catch (Exception e) {
-            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
-            if (msg.contains("idx_terminals_ip")) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                        "errorCode", "T002",
-                        "message", "Bunday IP manzil allaqachon mavjud"
-                ));
-            }
-            throw e;
+        if (request.getIp() != null && !request.getIp().isBlank()
+                && terminalRepo.existsByIpAndDeletedFalseAndIdNot(request.getIp().trim(), id)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "errorCode", "T002",
+                    "message", "Bunday IP manzil allaqachon mavjud"
+            ));
         }
+
+        if (request.getName() != null) terminal.setName(request.getName());
+        if (request.getDescription() != null) terminal.setDescription(request.getDescription());
+        if (request.getFilter() != null) terminal.setFilter(request.getFilter());
+        if (request.getIsComing() != null) terminal.setComing(request.getIsComing());
+        if (request.getIp() != null) terminal.setIp(request.getIp());
+        if (request.getLogin() != null) terminal.setLogin(request.getLogin());
+        if (request.getPassword() != null) terminal.setPassword(request.getPassword());
+        if (request.getModel() != null) terminal.setModel(request.getModel());
+        terminalRepo.save(terminal);
 
         return ResponseEntity.ok(Map.of(
                 "terminalId", id,
@@ -370,17 +247,14 @@ public class TerminalServiceImpl implements TerminalService {
     public HttpEntity<?> delete(Integer orgId, Long id) {
         ensureSettings();
 
-        Integer result = jdbc.queryForObject(
-                "SELECT delete_terminal(?, ?)",
-                Integer.class,
-                id.intValue(),
-                orgId
-        );
-
-        int code = result == null ? -1 : result;
-        if (code < 0) {
+        Terminal terminal = terminalRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (terminal == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Terminal topilmadi"));
         }
+
+        terminal.setDeleted(true);
+        terminal.setActive(false);
+        terminalRepo.save(terminal);
 
         return ResponseEntity.ok(Map.of(
                 "terminalId", id,
@@ -393,17 +267,20 @@ public class TerminalServiceImpl implements TerminalService {
     public HttpEntity<?> reset(Integer orgId, Long id) {
         ensureSettings();
 
-        Integer result = jdbc.queryForObject(
-                "SELECT reset_terminal(?, ?)",
-                Integer.class,
-                id,
-                orgId
-        );
-
-        int count = result == null ? -1 : result;
-        if (count < 0) {
+        Terminal terminal = terminalRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId).orElse(null);
+        if (terminal == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Terminal topilmadi"));
         }
+
+        taskRepo.save(TerminalTask.builder()
+                .terminalId(id)
+                .personId(null)
+                .action("add_all_persons")
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        long count = personRepo.countByOrganizationIdAndDeletedFalse(orgId);
 
         return ResponseEntity.ok(Map.of(
                 "terminalId", id,
@@ -411,50 +288,39 @@ public class TerminalServiceImpl implements TerminalService {
         ));
     }
 
-    private boolean terminalExists(Integer orgId, Long id) {
-        Boolean exists = jdbc.queryForObject(
-                "SELECT EXISTS(SELECT 1 FROM terminals WHERE id=? AND organization_id=? AND deleted=false)",
-                Boolean.class,
-                id,
-                orgId
-        );
-        return Boolean.TRUE.equals(exists);
-    }
-
     private int maxTerminalsCount() {
-        Integer max = jdbc.queryForObject(
-                "SELECT max_terminals_count FROM api_settings ORDER BY id DESC LIMIT 1",
-                Integer.class
-        );
+        Integer max = apiSettingsRepo.findTopByOrderByIdDesc()
+                .map(ApiSettings::getMaxTerminalsCount)
+                .orElse(10);
         return max == null ? 10 : Math.max(1, max);
     }
 
     private void ensureSettings() {
-        jdbc.execute("CREATE TABLE IF NOT EXISTS api_settings (" +
-                "id BIGSERIAL PRIMARY KEY," +
-                "max_graphics_count INTEGER NOT NULL DEFAULT 50," +
-                "max_terminals_count INTEGER NOT NULL DEFAULT 10" +
-                ")");
-        jdbc.execute("ALTER TABLE api_settings ADD COLUMN IF NOT EXISTS max_terminals_count INTEGER NOT NULL DEFAULT 10");
-        jdbc.execute("INSERT INTO api_settings(max_graphics_count, max_terminals_count) " +
-                "SELECT 50, 10 WHERE NOT EXISTS (SELECT 1 FROM api_settings)");
+        if (apiSettingsRepo.findTopByOrderByIdDesc().isEmpty()) {
+            apiSettingsRepo.save(ApiSettings.builder()
+                    .maxGraphicsCount(50)
+                    .maxTerminalsCount(10)
+                    .build());
+        }
     }
 
-    private boolean hasColumn(String table, String column) {
-        String key = table + "." + column;
-        return columnExistsCache.computeIfAbsent(key, k -> {
-            try {
-                Boolean exists = jdbc.queryForObject(
-                        "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ? AND column_name = ?)",
-                        Boolean.class,
-                        table,
-                        column
-                );
-                return Boolean.TRUE.equals(exists);
-            } catch (Exception e) {
-                return false;
-            }
-        });
+    private Map<String, Object> toTerminalItem(Terminal terminal, boolean includePassword) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", terminal.getId());
+        row.put("organizationId", terminal.getOrganizationId());
+        row.put("name", terminal.getName());
+        row.put("description", terminal.getDescription());
+        row.put("filter", terminal.getFilter());
+        row.put("createdTime", terminal.getCreatedAt() == null ? null : terminal.getCreatedAt().toString());
+        row.put("lastOnline", terminal.getLastOnline() == null ? null : terminal.getLastOnline().toString());
+        row.put("ip", terminal.getIp());
+        row.put("login", terminal.getLogin());
+        if (includePassword) row.put("password", terminal.getPassword());
+        row.put("model", terminal.getModel());
+        row.put("deleted", terminal.isDeleted());
+        row.put("isComing", terminal.isComing());
+        row.put("isOnline", terminal.getIsOnline() != null && terminal.getIsOnline());
+        return row;
     }
 }
 

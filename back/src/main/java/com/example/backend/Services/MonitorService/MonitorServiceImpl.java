@@ -9,8 +9,8 @@ import com.example.backend.Payload.req.MonitorCreateRequest;
 import com.example.backend.Payload.req.MonitorUpdateRequest;
 import com.example.backend.Payload.res.MonitorDetailResponse;
 import com.example.backend.Payload.res.MonitorListItem;
+import com.example.backend.Repository.MonitorRepo;
 import com.example.backend.Repository.RoleRepo;
-import com.example.backend.Repository.UserProfileRepo;
 import com.example.backend.Repository.UserRepo;
 import com.example.backend.Services.AuthService.RefreshTokenService;
 import com.example.backend.exceptions.MonitorNotFoundException;
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 public class MonitorServiceImpl implements MonitorService {
 
     private final UserRepo userRepo;
-    private final UserProfileRepo userProfileRepo;
+    private final MonitorRepo monitorRepo;
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
@@ -58,13 +58,13 @@ public class MonitorServiceImpl implements MonitorService {
         PageRequest pageable = PageRequest.of(Math.max(0, page - 1), pageSize);
         String partParam = (part != null && !part.isBlank()) ? part : null;
 
-        Page<UserProfile> resultPage = userProfileRepo.findMonitors(
+        Page<UserProfile> resultPage = monitorRepo.findMonitors(
                 UserRoles.ROLE_MONITOR, active, partParam, pageable);
 
         List<MonitorListItem> items = resultPage.getContent()
                 .stream()
                 .map(this::toListItem)
-                .collect(Collectors.toList());
+                .toList();
 
         return ResponseEntity.ok(Map.of(
                 "data",       items,
@@ -80,7 +80,7 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     public HttpEntity<?> download(String part, Boolean active) {
         String partParam = (part != null && !part.isBlank()) ? part : null;
-        List<UserProfile> monitors = userProfileRepo.findMonitorsAll(
+        List<UserProfile> monitors = monitorRepo.findMonitorsAll(
                 UserRoles.ROLE_MONITOR, active, partParam);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -142,7 +142,7 @@ public class MonitorServiceImpl implements MonitorService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getById(Integer id) {
-        UserProfile profile = findMonitorProfileByNumber(id, "A0018");
+        UserProfile profile = findMonitorProfileByNumber(id);
         return ResponseEntity.ok(toDetailResponse(profile));
     }
 
@@ -193,7 +193,7 @@ public class MonitorServiceImpl implements MonitorService {
                 .deleted(false)
                 .telegramBotActive(false)
                 .build();
-        userProfileRepo.save(profile);
+        monitorRepo.save(profile);
 
         log.info("Monitor yaratildi: id={}, login={}", nextNumber, request.getLogin());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
@@ -208,7 +208,7 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     @Transactional
     public HttpEntity<?> update(Integer id, MonitorUpdateRequest request) {
-        UserProfile profile = findMonitorProfileByNumber(id, "A0018");
+        UserProfile profile = findMonitorProfileByNumber(id);
         User user = profile.getUser();
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -220,7 +220,7 @@ public class MonitorServiceImpl implements MonitorService {
         if (request.getPhotoUrl()     != null) profile.setPhotoUrl(request.getPhotoUrl());
 
         profile.setUpdatedAt(LocalDateTime.now());
-        userProfileRepo.save(profile);
+        monitorRepo.save(profile);
 
         log.info("Monitor yangilandi: id={}", id);
         return ResponseEntity.ok(Map.of(
@@ -235,15 +235,11 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     @Transactional
     public HttpEntity<?> delete(Integer id) {
-        UserProfile profile = userRepo.findByNumber(id)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted())
-                .orElseThrow(() -> new MonitorNotFoundException(
-                        "A0018", "Monitor topilmadi yoki allaqachon o'chirilgan"));
+        UserProfile profile = findMonitorProfileByNumber(id);
 
         profile.setDeleted(true);
         profile.setActive(false);
-        userProfileRepo.save(profile);
+        monitorRepo.save(profile);
 
         log.info("Monitor soft-deleted: id={}", id);
         return ResponseEntity.ok(Map.of("message", "Monitor muvaffaqiyatli o'chirildi"));
@@ -255,9 +251,9 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     @Transactional
     public HttpEntity<?> setActive(Integer id, Boolean active) {
-        UserProfile profile = findMonitorProfileByNumber(id, "A0018");
+        UserProfile profile = findMonitorProfileByNumber(id);
         profile.setActive(active);
-        userProfileRepo.save(profile);
+        monitorRepo.save(profile);
 
         String msg = active ? "Monitor faollashtirildi" : "Monitor bloklandi";
         log.info("{}: id={}", msg, id);
@@ -274,7 +270,7 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     @Transactional
     public HttpEntity<?> changePassword(Integer id, MonitorChangePasswordRequest request) {
-        UserProfile profile = findMonitorProfileByNumber(id, "A0018");
+        UserProfile profile = findMonitorProfileByNumber(id);
         User user = profile.getUser();
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -297,21 +293,18 @@ public class MonitorServiceImpl implements MonitorService {
     @Transactional
     public HttpEntity<?> addOrganization(Integer monitorId, Integer organizationId) {
         // Monitor topish (faol bo'lishi shart)
-        userRepo.findByNumber(monitorId)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted() && p.isActive())
+        monitorRepo.findByUser_NumberAndDeletedFalse(monitorId)
+                .filter(UserProfile::isActive)
                 .orElseThrow(() -> new MonitorNotFoundException(
                         "A0018", "Monitor topilmadi yoki faol emas."));
 
         // Tashkilot topish
-        UserProfile orgProfile = userRepo.findByNumber(organizationId)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted())
+        UserProfile orgProfile = monitorRepo.findByUser_NumberAndDeletedFalse(organizationId)
                 .orElseThrow(() -> new OrganizationNotFoundException(
                         "A0023", "Tashkilot topilmadi."));
 
         orgProfile.setMonitorId(monitorId);
-        userProfileRepo.save(orgProfile);
+        monitorRepo.save(orgProfile);
 
         log.info("Tashkilot {} monitorga {} biriktirildi", organizationId, monitorId);
         return ResponseEntity.ok(Map.of("message", "Tashkilot muvaffaqiyatli monitorga biriktirildi."));
@@ -323,14 +316,13 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     @Transactional
     public HttpEntity<?> removeOrganization(Integer monitorId, Integer organizationId) {
-        UserProfile orgProfile = userRepo.findByNumber(organizationId)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted() && monitorId.equals(p.getMonitorId()))
+        UserProfile orgProfile = monitorRepo.findByUser_NumberAndDeletedFalse(organizationId)
+                .filter(p -> monitorId.equals(p.getMonitorId()))
                 .orElseThrow(() -> new MonitorNotFoundException(
                         "A0025", "Tashkilot topilmadi yoki bu monitorga biriktirilmagan."));
 
         orgProfile.setMonitorId(0);
-        userProfileRepo.save(orgProfile);
+        monitorRepo.save(orgProfile);
 
         log.info("Tashkilot {} monitordan {} olib tashlandi", organizationId, monitorId);
         return ResponseEntity.ok(Map.of("message", "Tashkilot muvaffaqiyatli monitordan olib tashlandi."));
@@ -341,12 +333,12 @@ public class MonitorServiceImpl implements MonitorService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getOrganizations(Integer monitorId) {
-        List<UserProfile> orgs = userProfileRepo.findOrganizationsByMonitorId(
+        List<UserProfile> orgs = monitorRepo.findOrganizationsByMonitorId(
                 UserRoles.ROLE_ADMIN, monitorId);
 
         List<Map<String, Object>> data = orgs.stream()
                 .map(this::toOrgItem)
-                .collect(Collectors.toList());
+                .toList();
 
         return ResponseEntity.ok(Map.of("data", data, "total", data.size()));
     }
@@ -356,11 +348,11 @@ public class MonitorServiceImpl implements MonitorService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getUnassignedOrganizations() {
-        List<UserProfile> orgs = userProfileRepo.findUnassignedOrganizations(UserRoles.ROLE_ADMIN);
+        List<UserProfile> orgs = monitorRepo.findUnassignedOrganizations(UserRoles.ROLE_ADMIN);
 
         List<Map<String, Object>> data = orgs.stream()
                 .map(this::toOrgItem)
-                .collect(Collectors.toList());
+                .toList();
 
         return ResponseEntity.ok(Map.of("data", data, "total", data.size()));
     }
@@ -369,11 +361,9 @@ public class MonitorServiceImpl implements MonitorService {
     //  Private helpers
     // ═══════════════════════════════════════════════════════════
 
-    private UserProfile findMonitorProfileByNumber(Integer number, String errorCode) {
-        User user = userRepo.findByNumber(number)
-                .orElseThrow(() -> new MonitorNotFoundException(errorCode, "Monitor topilmadi"));
-        return userProfileRepo.findByUser(user)
-                .orElseThrow(() -> new MonitorNotFoundException(errorCode, "Monitor topilmadi"));
+    private UserProfile findMonitorProfileByNumber(Integer number) {
+        return monitorRepo.findByUser_NumberAndDeletedFalse(number)
+                .orElseThrow(() -> new MonitorNotFoundException("A0018", "Monitor topilmadi"));
     }
 
     private MonitorListItem toListItem(UserProfile p) {

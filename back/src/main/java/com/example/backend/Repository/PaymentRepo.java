@@ -1,13 +1,22 @@
 package com.example.backend.Repository;
 
 import com.example.backend.Entity.Payment;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 
-public interface PaymentRepo extends JpaRepository<Payment, Long> {
+public interface PaymentRepo extends JpaRepository<Payment, Long>, JpaSpecificationExecutor<Payment> {
+
+    Optional<Payment> findByIdAndOrganizationId(Long id, Integer organizationId);
+
+    List<Payment> findByOrganizationIdAndPersonIdOrderByCreatedTimeDesc(Integer organizationId, Long personId);
+
+    List<Payment> findByOrganizationIdAndPersonId(Integer organizationId, Long personId);
 
     @Query(value = """
             SELECT COALESCE(SUM(CASE WHEN p.payment_type = 'income' THEN COALESCE(p.amount, p.price, 0) ELSE 0 END), 0)
