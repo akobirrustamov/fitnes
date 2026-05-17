@@ -9,8 +9,8 @@ import com.example.backend.Payload.req.ProvinceCreateRequest;
 import com.example.backend.Payload.req.ProvinceUpdateRequest;
 import com.example.backend.Payload.res.ProvinceDetailResponse;
 import com.example.backend.Payload.res.ProvinceListItem;
+import com.example.backend.Repository.ProvinceRepo;
 import com.example.backend.Repository.RoleRepo;
-import com.example.backend.Repository.UserProfileRepo;
 import com.example.backend.Repository.UserRepo;
 import com.example.backend.Services.AuthService.RefreshTokenService;
 import com.example.backend.exceptions.ProvinceHasRegionsException;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public class ProvinceServiceImpl implements ProvinceService {
 
     private final UserRepo userRepo;
-    private final UserProfileRepo userProfileRepo;
+    private final ProvinceRepo provinceRepo;
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
@@ -48,7 +48,7 @@ public class ProvinceServiceImpl implements ProvinceService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getAll(Boolean active) {
-        List<UserProfile> profiles = userProfileRepo.findProvincesAll(UserRoles.ROLE_PROVINCE, active);
+        List<UserProfile> profiles = provinceRepo.findProvincesAll(UserRoles.ROLE_PROVINCE, active);
         List<ProvinceListItem> items = profiles.stream().map(this::toListItem).collect(Collectors.toList());
         return ResponseEntity.ok(items);
     }
@@ -58,7 +58,7 @@ public class ProvinceServiceImpl implements ProvinceService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> getById(Integer id) {
-        UserProfile profile = findProvinceProfileByNumber(id, "A0022");
+        UserProfile profile = findProvinceProfileByNumber(id);
         return ResponseEntity.ok(toDetailResponse(profile));
     }
 
@@ -112,7 +112,7 @@ public class ProvinceServiceImpl implements ProvinceService {
                 .deleted(false)
                 .telegramBotActive(false)
                 .build();
-        userProfileRepo.save(profile);
+        provinceRepo.save(profile);
 
         log.info("Viloyat yaratildi: id={}, login={}", nextNumber, request.getLogin());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
@@ -127,7 +127,7 @@ public class ProvinceServiceImpl implements ProvinceService {
     @Override
     @Transactional
     public HttpEntity<?> update(Integer id, ProvinceUpdateRequest request) {
-        UserProfile profile = findProvinceProfileByNumber(id, "A0022");
+        UserProfile profile = findProvinceProfileByNumber(id);
         User user = profile.getUser();
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -143,7 +143,7 @@ public class ProvinceServiceImpl implements ProvinceService {
         if (request.getPhotoUrl()       != null) profile.setPhotoUrl(request.getPhotoUrl());
 
         profile.setUpdatedAt(LocalDateTime.now());
-        userProfileRepo.save(profile);
+        provinceRepo.save(profile);
 
         log.info("Viloyat yangilandi: id={}", id);
         return ResponseEntity.ok(Map.of(
@@ -158,14 +158,12 @@ public class ProvinceServiceImpl implements ProvinceService {
     @Override
     @Transactional
     public HttpEntity<?> delete(Integer id) {
-        UserProfile profile = userRepo.findByNumber(id)
-                .flatMap(userProfileRepo::findByUser)
-                .filter(p -> !p.isDeleted())
+        UserProfile profile = provinceRepo.findByUser_NumberAndDeletedFalse(id)
                 .orElseThrow(() -> new ProvinceNotFoundException(
                         "A0022", "Viloyat topilmadi yoki allaqachon o'chirilgan"));
 
         // Bu viloyatda faol tumanlar bormi?
-        boolean hasRegions = userProfileRepo.existsActiveRegionByProvinceId(
+        boolean hasRegions = provinceRepo.existsActiveRegionByProvinceId(
                 UserRoles.ROLE_REGION, id);
         if (hasRegions) {
             throw new ProvinceHasRegionsException(
@@ -174,7 +172,7 @@ public class ProvinceServiceImpl implements ProvinceService {
 
         profile.setDeleted(true);
         profile.setActive(false);
-        userProfileRepo.save(profile);
+        provinceRepo.save(profile);
 
         log.info("Viloyat soft-deleted: id={}", id);
         return ResponseEntity.ok(Map.of("message", "Viloyat muvaffaqiyatli o'chirildi"));
@@ -186,9 +184,9 @@ public class ProvinceServiceImpl implements ProvinceService {
     @Override
     @Transactional
     public HttpEntity<?> setActive(Integer id, Boolean active) {
-        UserProfile profile = findProvinceProfileByNumber(id, "A0022");
+        UserProfile profile = findProvinceProfileByNumber(id);
         profile.setActive(active);
-        userProfileRepo.save(profile);
+        provinceRepo.save(profile);
 
         String msg = active ? "Viloyat faollashtirildi" : "Viloyat bloklandi";
         log.info("{}: id={}", msg, id);
@@ -204,7 +202,7 @@ public class ProvinceServiceImpl implements ProvinceService {
     // ═══════════════════════════════════════════════════════════
     @Override
     public HttpEntity<?> download(Boolean active) {
-        List<UserProfile> provinces = userProfileRepo.findProvincesAll(UserRoles.ROLE_PROVINCE, active);
+        List<UserProfile> provinces = provinceRepo.findProvincesAll(UserRoles.ROLE_PROVINCE, active);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Provinces");
@@ -269,7 +267,7 @@ public class ProvinceServiceImpl implements ProvinceService {
     @Override
     @Transactional
     public HttpEntity<?> changePassword(Integer id, ProvinceChangePasswordRequest request) {
-        UserProfile profile = findProvinceProfileByNumber(id, "A0022");
+        UserProfile profile = findProvinceProfileByNumber(id);
         User user = profile.getUser();
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -289,11 +287,9 @@ public class ProvinceServiceImpl implements ProvinceService {
     //  Private helpers
     // ═══════════════════════════════════════════════════════════
 
-    private UserProfile findProvinceProfileByNumber(Integer number, String errorCode) {
-        User user = userRepo.findByNumber(number)
-                .orElseThrow(() -> new ProvinceNotFoundException(errorCode, "Viloyat topilmadi"));
-        return userProfileRepo.findByUser(user)
-                .orElseThrow(() -> new ProvinceNotFoundException(errorCode, "Viloyat topilmadi"));
+    private UserProfile findProvinceProfileByNumber(Integer number) {
+        return provinceRepo.findByUser_NumberAndDeletedFalse(number)
+                .orElseThrow(() -> new ProvinceNotFoundException("A0022", "Viloyat topilmadi"));
     }
 
     private ProvinceListItem toListItem(UserProfile p) {

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Fitness CRM | Texnik topshiriq va arxitektura</title>
+  <!-- Tailwind CSS + Google Fonts + Custom Animation -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; scroll-behavior: smooth; }
+    body { background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%); }
+    /* fade-up animation */
+    @keyframes fadeUp {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up {
+      animation: fadeUp 0.5s ease-out forwards;
+    }
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+    .card-hover {
+      transition: all 0.25s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+    }
+    .badge-glow {
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.2);
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #e2e8f0;
+      border-radius: 8px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body class="text-slate-700 scrollbar-thin">
+
+  <!-- HEADER with gradient and decorative -->
+  <header class="relative overflow-hidden bg-gradient-to-r from-indigo-900 via-purple-800 to-indigo-900 text-white shadow-2xl">
+    <div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2060%2060%22%20width%3D%2260%22%20height%3D%2260%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M30%200L36.18%2020.82%2058%2020.82%2040.09%2033.18%2046.18%2054%2030%2041.64%2013.82%2054%2019.91%2033.18%202%2020.82%2023.82%2020.82z%22%2F%3E%3C%2Fsvg%3E')] bg-repeat"></div>
+    <div class="container mx-auto px-5 py-10 md:py-16 relative z-10">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="animate-fade-up">
+          <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight flex items-center gap-3 flex-wrap">
+            <span class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-2xl">🏋️‍♂️</span> 
+            Fitness Zallar uchun CRM
+          </h1>
+          <p class="text-indigo-100 text-lg mt-3 max-w-2xl">Mukammal arxitektura, real vaqtli sinxronizatsiya, Hikvision FaceID & avtomatik boshqaruv</p>
+          <div class="flex flex-wrap gap-2 mt-4">
+            <span class="bg-indigo-800/60 px-3 py-1 rounded-full text-sm">Docker + Compose</span>
+            <span class="bg-indigo-800/60 px-3 py-1 rounded-full text-sm">JWT auth</span>
+            <span class="bg-indigo-800/60 px-3 py-1 rounded-full text-sm">RateLimiter</span>
+            <span class="bg-indigo-800/60 px-3 py-1 rounded-full text-sm">3 Til (Uz/Ru/Uz-Kirill)</span>
+            <span class="bg-indigo-800/60 px-3 py-1 rounded-full text-sm">Tailwind + Dark/Light</span>
+          </div>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20 text-sm font-mono animate-fade-up delay-100">
+          <span class="block text-indigo-200">📦 API & Frontend container</span>
+          <span class="block text-white">PostgreSQL + Swagger (auth)</span>
+          <span class="block text-white">⚡ FaceID Microservice (Events/Actions)</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 md:px-6 py-8 max-w-7xl">
+    <!-- quick navigation chips -->
+    <div class="flex flex-wrap gap-2 mb-8 sticky top-2 z-20 bg-white/80 backdrop-blur-lg rounded-full py-2 px-3 shadow-md">
+      <a href="#overview" class="text-sm px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition">📌 Umumiy</a>
+      <a href="#tech" class="text-sm px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 transition">⚙️ Texnik talablar</a>
+      <a href="#auth" class="text-sm px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 transition">🔐 Auth</a>
+      <a href="#superadmin" class="text-sm px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 transition">👑 SuperAdmin</a>
+      <a href="#director" class="text-sm px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 transition">🏢 Director (Zal)</a>
+      <a href="#market-trainers" class="text-sm px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 transition">🛒 Market & Murabbiylar</a>
+      <a href="#reports" class="text-sm px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 transition">📊 Hisobotlar</a>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- OVERVIEW -->
+    <!-- ========================================= -->
+    <section id="overview" class="mb-12 animate-fade-up">
+      <div class="bg-white rounded-2xl shadow-xl border border-indigo-50 overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-50 to-white px-6 py-4 border-b">
+          <h2 class="text-2xl font-bold text-indigo-800 flex items-center gap-2">📋 Dastur haqida</h2>
+        </div>
+        <div class="p-6 space-y-3 text-slate-700 leading-relaxed">
+          <p><span class="font-semibold">🎯 Fitness zallari uchun soddalashtirilgan CRM.</span> Abonentlar kirish-chiqish harakatlari Hikvision FaceID terminallari orqali amalga oshiriladi. Mikroservis (ASP.NET) ma’lumotlarni <code class="bg-gray-100 px-1 rounded">events</code> va <code class="bg-gray-100 px-1 rounded">actions</code> jadvallariga yozadi.</p>
+          <p>✅ Har bir abonent <strong>3 yo‘nalishda</strong> qarzdor bo‘lishi mumkin: <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-sm">Market</span> <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-sm">Murabbiy</span> <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-sm">Zal obunasi</span>. To‘lovlar tizimi virtual (admin tomonidan son sifatida kiritiladi), haqiqiy pul emas, faqat obuna to‘lovlari Click orqali amalga oshiriladi (NodeJS mikroservis).</p>
+          <p>🏢 Tashkilotlar (zallar) uchun yagona obuna narxi superadmin tomonidan belgilanadi. Ikki rol: <strong>super_admin</strong> (platforma boshqaruvi) va <strong>director</strong> (zal egasi).</p>
+          <div class="bg-amber-50 border-l-4 border-amber-400 p-3 rounded mt-2 text-sm">📌 <span class="font-medium">Eslatma:</span> Barcha interfeyslar O‘zbek (lotin/krill) + Rus tillarida, tungi/kunduzgi rejim qo‘llab-quvvatlanadi.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- Umumiy texnik talablar -->
+    <!-- ========================================= -->
+    <section id="tech" class="mb-12 animate-fade-up delay-100">
+      <div class="bg-white rounded-2xl shadow-xl border">
+        <div class="bg-gray-50 px-6 py-4 border-b rounded-t-2xl">
+          <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">⚙️ Umumiy texnik talablar</h2>
+        </div>
+        <div class="p-6 grid md:grid-cols-2 gap-5">
+          <ul class="space-y-2 list-disc pl-5 marker:text-indigo-500">
+            <li>✅ Docker container + docker-compose (backend + frontend + postgresql)</li>
+            <li>✅ PostgreSQL, tashqaridan ulanish uchun port ochilgan</li>
+            <li>✅ Backend API (Nodejs yoki siz tanlagan til) JWT autentifikatsiya</li>
+            <li>✅ Swagger login-parol bilan himoyalangan (.env)</li>
+            <li>✅ RateLimiter: IP + tokenga asoslangan, har bir endpointga individual limit</li>
+            <li>✅ 3 til: O‘zbek (lotin/krill) + Rus – JSON fayllar bilan</li>
+          </ul>
+          <ul class="space-y-2 list-disc pl-5 marker:text-indigo-500">
+            <li>🎨 Frontend: Tailwind CSS, moslashuvchan (mobil + desktop), dark/light mode</li>
+            <li>📁 Yuklangan rasmlar endpoint <code>/Upload</code> orqali, token tekshiruvi bilan</li>
+            <li>🗄️ Jadvallar: users, organizations, provinces, regions, tariffs, api_settings, monitors, news, feedbacks, messages, terminals, tasks, dates, graphics, person, payments, events, market, trainers, categories</li>
+            <li>🔄 Person (abonent) o‘zgarishlari FaceID terminallariga task orqali sinxronlanadi (task_type 1..8)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- Autentifikatsiya + Parol tiklash -->
+    <!-- ========================================= -->
+    <section id="auth" class="mb-12 animate-fade-up delay-200">
+      <div class="bg-white rounded-2xl shadow-xl">
+        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b rounded-t-2xl">
+          <h2 class="text-2xl font-bold text-indigo-800">🔐 Autentifikatsiya va xavfsizlik</h2>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="border rounded-xl p-4 bg-gray-50">
+              <h3 class="font-bold text-lg flex items-center gap-1">🔄 JWT + Refresh token</h3>
+              <p class="text-sm mt-2">Access token — 30 daqiqa, Refresh token — 3 kun. Refresh token revoke qilish mexanizmi <code class="bg-gray-200 px-1">refresh_tokens.sql</code> orqali. Token expired bo‘lsa, avtomatik yangilanadi.</p>
+              <p class="text-sm mt-1">📌 Login jarayoni: <strong>users</strong> va <strong>organizations</strong> jadvallarida login/parol tekshiruvi, agar active=false bo‘lsa "akkaunt faollashtirilmagan" xabari, parol noto‘g‘ri bo‘lsa <code>password_hint</code> qaytariladi.</p>
+            </div>
+            <div class="border rounded-xl p-4 bg-gray-50">
+              <h3 class="font-bold text-lg flex items-center gap-1">📲 Parolni tiklash (SMS)</h3>
+              <p class="text-sm">Login yuboriladi -> <code>recovery_requests</code> jadvaliga yozuv, SMS xizmati (SendSMS metod bo‘sh, keyin to‘ldiriladi). 2 daqiqa amal qiladi, 5 urinish RateLimit orqali cheklangan.</p>
+              <div class="mt-2 bg-indigo-100 rounded-lg p-2 text-xs font-mono">recovery_requests: request_id, user_login, code, expired_at, revoked</div>
+            </div>
+          </div>
+          <div class="bg-blue-50 p-3 rounded-xl text-sm"><span class="font-semibold">🔒 Role-based:</span> super_admin (users jadvali) va director (organizations). Login bo‘yicha tegishli rolni aniqlab, tegishli menyular yuklanadi.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- SUPERADMIN bo'limlari -->
+    <!-- ========================================= -->
+    <section id="superadmin" class="mb-12">
+      <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-t-4 border-indigo-600">
+        <div class="bg-indigo-900 text-white px-6 py-4">
+          <h2 class="text-2xl font-bold flex items-center gap-2">👑 SuperAdmin - To‘liq boshqaruv paneli</h2>
+          <p class="text-indigo-200 text-sm mt-1">Viloyatlar, tumanlar, zallar, tariflar, serverlar, yangiliklar, murojaatlar va boshqalar</p>
+        </div>
+        <div class="p-6 space-y-8">
+          <!-- Dashboard stats -->
+          <div><h3 class="text-xl font-semibold text-indigo-800 border-l-4 border-indigo-500 pl-3">📊 Dashboard (SuperAdmin)</h3>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+            <div class="bg-gray-50 p-3 rounded-xl">✅ Faol zallar soni</div><div class="bg-gray-50 p-3 rounded-xl">⏳ Muddat o‘tgan zallar</div>
+            <div class="bg-gray-50 p-3 rounded-xl">💰 Oylik tushum (obuna to‘lovlari)</div><div class="bg-gray-50 p-3 rounded-xl">📈 Jami abonentlar</div>
+          </div></div>
+
+          <!-- Viloyatlar -->
+          <div><h3 class="text-xl font-semibold flex items-center gap-2">📍 Viloyatlar (CRUD)</h3>
+          <ul class="list-disc pl-6 space-y-1 text-sm mt-1"><li>Modal orqali qo‘shish/tahrirlash, o‘chirish (tuman mavjud bo‘lsa bloklanadi)</li><li>Excel download, detail page</li><li>Jadval pagination shart emas</li></ul></div>
+
+          <div><h3 class="text-xl font-semibold flex items-center gap-2">🏙️ Tumanlar (Regions)</h3>
+          <ul class="list-disc pl-6 text-sm"><li>Province filter, qidiruv (3 belgi), pagination, detailda pastda “zal biriktirish” (region_id=0 bo‘lgan zallar chiqadi)</li><li>O‘chirishda barcha organizationlarning region_id=0 bo‘ladi</li><li>CRUD + Excel export</li></ul></div>
+
+          <div><h3 class="text-xl font-semibold flex items-center gap-2">🏢 Zallar (Organizations)</h3>
+          <ul class="list-disc pl-6 text-sm"><li>Filter: viloyat, tuman, aktivlik; qidiruv; qo‘shilganda avtomatik <code>api_settings</code> va 2 ta default grafik yaratiladi</li><li>Jadvalda terminallar (2/3 online ko‘rinish), abonentlar soni</li><li>Detailda: aktiv switch, parol o‘zgartirish, tarif tanlash. Pastda region/monitor ma’lumoti</li></ul></div>
+
+          <div><h3 class="text-xl font-semibold">📦 Tariflar, ⚙️ Sozlamalar (api_settings)</h3>
+          <p class="text-sm">Tariflar – oddiy CRUD. Sozlamalar – zal tanlab, opening_time, closing_time, price_per_user, max_users_count va hk. Superadmin barcha sozlamalarni o‘zgartira oladi.</p></div>
+
+          <div><h3 class="text-xl font-semibold">🖥️ Serverlar (Monitors)</h3>
+          <ul class="list-disc pl-6 text-sm"><li>CRUD, monitor o‘chirilsa organization.monitor_id=0 bo‘ladi</li><li>Detailda monitorga zal biriktirish (organizations.monitor_id=0 bo‘lganlar)</li><li>Parol o‘zgartirish, aktiv/inaktiv qilish</li></ul></div>
+
+          <div><h3 class="text-xl font-semibold">📰 Yangiliklar & 💬 Murojaatlar & ✉️ Xabarlar</h3>
+          <ul class="list-disc pl-6 text-sm"><li>Yangilik: start tugmasi bosilganda barcha organizationlar uchun news_historyga yoziladi, update faqat startdan oldin mumkin</li><li>Murojaatlar: markup, is_seen, registration_letter filtrlari, barchasini o‘qildi belgilash</li><li>Xabarlar: zalga maxsus, admin tomonidan yoziladi, avtomatik yoki admin turi filteri</li></ul></div>
+          <div class="bg-amber-50 p-3 rounded-lg"><span class="font-bold">🔄 Profil (users)</span> – o‘z profilini tahrirlash, parolni almashtirish, logout esa chap pastki burchakda.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- DIRECTOR (ZAL) BO'LIMLARI -->
+    <!-- ========================================= -->
+    <section id="director" class="mb-12 animate-fade-up delay-300">
+      <div class="bg-white rounded-2xl shadow-xl border-t-4 border-emerald-600">
+        <div class="bg-emerald-800 text-white px-6 py-4 rounded-t-2xl">
+          <h2 class="text-2xl font-bold">🏋️ Director roli – Zal boshqaruvi</h2>
+          <p>Hisobotlar, terminallar, market, ro‘yxatlar (abonentlar, murabbiylar, grafiklar) va sozlamalar</p>
+        </div>
+        <div class="p-6 space-y-8">
+          <!-- Terminallar -->
+          <div><h3 class="text-xl font-semibold flex items-center gap-1">🖥️ Terminallar → Qurilmalar</h3>
+          <ul class="list-disc pl-6 text-sm"><li>CRUD, max_terminals_count tekshiruvi, o‘chirishda tegishli tasklar soft delete</li><li>Detailda terminal topshiriqlari (tasks) pagination bilan</li><li>Reset tugmasi – barcha tasklarni deleted=true va yangi task_type=5 yaratadi</li></ul></div>
+          <div><h3 class="text-xl font-semibold">📋 Terminallar → Topshiriqlar</h3>
+          <ul class="list-disc pl-6 text-sm"><li>Faqat ko‘rish, filter: terminal, status (0-kutilmoqda,1-bajarildi,2-xatolik)</li><li>Pagination, detailda terminal haqida ma’lumot</li></ul></div>
+          
+          <!-- Ish kunlari + Grafiklar -->
+          <div class="grid md:grid-cols-2 gap-5">
+            <div><h3 class="font-bold text-lg">📅 Ish kunlari (Dates)</h3><p class="text-sm">Yil/oy tanlanadi, switch orqali ta’til belgilanadi (dates.holiday). Jadvalda sanalar o‘zgaradi.</p></div>
+            <div><h3 class="font-bold text-lg">📈 Grafiklar (Graphics)</h3><p class="text-sm">CRUD, dars jadvallari / majburiy kunlar. Download, pagination shart emas.</p></div>
+          </div>
+
+          <!-- Sozlamalar -->
+          <div><h3 class="text-xl font-semibold">⚙️ Sozlamalar (Zal sozlamalari)</h3>
+          <p class="text-sm">Faqat ruxsat berilgan maydonlar: <code>opening_time, closing_time, price_per_user</code>. Info icon orqali tushuntirishlar.</p></div>
+
+          <!-- Profil + Xabar/Yangiliklar -->
+          <div class="bg-gray-50 p-4 rounded-xl"><span class="font-bold">👤 Profil (organizations)</span> – o‘z ma’lumotlarini tahrirlash, parolni o‘zgartirish. Tepadagi menyuda: yangiliklar soni (o‘qilmagan), xabarlar soni, murojaat yuborish tugmasi.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- ASOSIY BO'LIMLAR: Abonentlar, Market, Murabbiylar, Harakatlar, To'lovlar -->
+    <!-- ========================================= -->
+    <section id="market-trainers" class="mb-12">
+      <div class="grid lg:grid-cols-2 gap-7">
+        <!-- Abonentlar bloki -->
+        <div class="bg-white rounded-2xl shadow-xl p-5 border-t-4 border-sky-500">
+          <h3 class="text-xl font-bold text-sky-800 flex items-center gap-2">👥 Abonentlar (Person)</h3>
+          <ul class="mt-3 space-y-2 text-sm list-disc pl-5">
+            <li><span class="font-medium">📍 Asosiy jadval:</span> avatar, ism, telefon, total_debt, zal qarzi (zal_debt), subscribe_end_date, access_count.</li>
+            <li><span class="font-medium">⚡ Qarzlarni so‘ndirish:</span> to‘lov modal orqali (qarz to‘liq yoki qisman so‘ndiriladi). Raschyot qilish – barcha qarzlarni is_important=false qiladi.</li>
+            <li><span class="font-medium">🔄 Obuna uzaytirish:</span> 1 oy + price_per_user bo‘yicha to‘lov, payment yoziladi.</li>
+            <li><span class="font-medium">🎨 FaceID sinxronizatsiya:</span> qo‘shish/update/delete/rasm o‘zgarishi -> har bir terminal uchun task (task_type 1,2,3,4,8) yaratiladi.</li>
+            <li>🔍 Filterlar: active, muddat o‘tgan/tugagan, murabbiy bo‘yicha. Qidiruv 3 belgidan keyin.</li>
+            <li>📄 Detailda: Market va trainer qarzlarini alohida so‘ndirish, to‘lovlar history (10 ta), harakatlar history (10 ta). Murabbiy biriktirish/uzaytirish.</li>
+          </ul>
+        </div>
+        <!-- Murabbiylar bloki -->
+        <div class="bg-white rounded-2xl shadow-xl p-5 border-t-4 border-rose-500">
+          <h3 class="text-xl font-bold text-rose-800 flex items-center gap-2">🏆 Murabbiylar (Trainers)</h3>
+          <ul class="mt-3 space-y-2 text-sm list-disc pl-5">
+            <li>CRUD, card ko‘rinishida, rasm, yutuqlar, narx, shogirdlar soni.</li>
+            <li>Detailda shogirdlar ro‘yxati, shogird qo‘shish, shogirdni o‘chirish – trainer_debt nollanadi va paymentlar is_important=false.</li>
+            <li>Murabbiy oylik tushum statistikasi (trainers jadvalida saqlanadi).</li>
+            <li>Faqat person.is_client=true shogird bo‘lishi mumkin.</li>
+          </ul>
+        </div>
+      </div>
+      <!-- Market & kategoriya -->
+      <div class="grid lg:grid-cols-2 gap-7 mt-7">
+        <div class="bg-white rounded-2xl shadow-xl p-5 border-t-4 border-amber-500">
+          <h3 class="text-xl font-bold text-amber-800">🛒 Market (Online savdo)</h3>
+          <ul class="list-disc pl-5 text-sm space-y-1 mt-2">
+            <li>Kategoriyalar (superadmin tomonidan boshqariladi), mahsulotlar CRUD, rasm yuklash.</li>
+            <li>Card ko‘rinishida, savat (localstorage) – mahsulot, miqdor, narx. Person tanlab, to‘lov yaratiladi (chiqim + kirim). Market payments category bo‘yicha.</li>
+            <li>Sotishda total_price va to‘langan summa farqi qarz sifatida qolishi mumkin.</li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-2xl shadow-xl p-5 border-t-4 border-purple-500">
+          <h3 class="text-xl font-bold text-purple-800">📌 Kategoriyalar (Categories)</h3>
+          <p class="text-sm mt-1">Superadmin tomonidan CRUD, icon yuklash, o‘chirilganda mahsulotlar ham o‘chadi.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hisobotlar Dashboard + Harakatlar + To'lovlar -->
+    <section id="reports" class="mb-12">
+      <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-slate-800 text-white px-6 py-3"><h2 class="text-xl font-bold">📈 Hisobotlar modullari (Director)</h2></div>
+        <div class="p-6 space-y-8">
+          <!-- Dashboard -->
+          <div><h3 class="text-lg font-bold text-slate-800">📊 Dashboard (Zal uchun)</h3>
+          <div class="grid sm:grid-cols-3 gap-3 mt-2 text-sm">
+            <div class="bg-green-50 p-3 rounded-xl">💰 Kunlik/haftalik/oylik tushum</div>
+            <div class="bg-red-50 p-3 rounded-xl">⚠️ Muddat tugagan / kirish soni tugagan / 1 hafta qolganlar</div>
+            <div class="bg-blue-50 p-3 rounded-xl">🏃 Bugungi tashriflar, hozir zaldagilar, 1 hafta tashrif qilmaganlar</div>
+          </div></div>
+          <!-- Harakatlar -->
+          <div><h3 class="text-lg font-bold">🚪 Harakatlar (Kirish/Chiqish events)</h3>
+          <ul class="list-disc pl-6 text-sm"><li>Eventlar FaceID dan keladi, qo‘lda qo‘shish mumkin (terminalId=0).</li><li>Filter: BeginDate/EndDate, person bo‘yicha qidiruv, is_client filtri.</li><li>Pagination, detailda person va terminal ma’lumotlari.</li></ul></div>
+          <!-- To'lovlar -->
+          <div><h3 class="text-lg font-bold">💸 To‘lovlar (Payments)</h3>
+          <ul class="list-disc pl-6 text-sm"><li>Kategoriya (Zal, Murabbiy, Market), kirim/chiqim radiobutton. Qo‘lda qo‘shish / o‘chirish (o‘chirilganda person balansi qayta hisoblanadi).</li>
+          <li>Filter: person, kategoriya, is_important (aktiv). Raschyot qilish tugmasi – tanlangan paymentlarni is_important=false qiladi.</li>
+          <li>Excel export, pagination. Person.is_client=false to‘lov yaratish taqiqlangan.</li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FaceID va task sinxronizatsiyasi -->
+    <section class="mb-12 animate-fade-up">
+      <div class="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl shadow-2xl text-white p-6">
+        <h3 class="text-2xl font-bold flex gap-2 items-center">🤖 FaceID terminallar bilan sinxronizatsiya mexanizmi</h3>
+        <div class="grid md:grid-cols-2 gap-6 mt-4 text-gray-200 text-sm">
+          <div>
+            <p class="font-semibold">📌 Task turlari (tasks jadvali):</p>
+            <ul class="list-disc pl-5 space-y-1"><li>type 1 – yangi person qo‘shish</li><li>type 2 – person ma’lumotlarini yangilash</li><li>type 3 – personni o‘chirish</li><li>type 4 – rasm yuklash (url)</li><li>type 5 – terminalni tozalash (reset)</li><li>type 8 – rasmni tozalash</li></ul>
+          </div>
+          <div class="bg-black/30 rounded-xl p-3 font-mono text-xs">
+            <p>⚙️ Person qo‘shilganda barcha terminallarga task yoziladi. Terminal har 10 sekundda tasklarni o‘qib sinxronlaydi.</p>
+            <p class="mt-2">✅ Person o‘chirilganda payments, events, actions o‘chiriladi va terminallarga delete task (type 3) yuboriladi.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Texnik xulosa: Docker, env, fayllar tuzilmasi -->
+    <section class="mb-12 bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-white/40 shadow-lg">
+      <div class="flex flex-wrap gap-4 justify-between items-center">
+        <div><span class="font-bold text-indigo-900">🐳 Docker containerlar:</span> backend (Node.js), frontend (Next/Vite), postgres:15, pgAdmin (ixtiyoriy). <code>docker-compose.yml</code> va <code>.env</code> namunasi mavjud</div>
+        <div class="flex gap-2 text-xs bg-gray-100 p-2 rounded-full"><span class="bg-green-600 w-2 h-2 rounded-full"></span> Swagger auth: <span class="font-mono">SWAGGER_USER / SWAGGER_PASS</span></div>
+      </div>
+      <div class="mt-4 grid sm:grid-cols-3 gap-3 text-center text-sm">
+        <div class="bg-indigo-50 p-2 rounded">📁 <strong>sql/</strong> – barcha jadvallar (provinces,regions,organizations,person,payments,events...)</div>
+        <div class="bg-indigo-50 p-2 rounded">📁 <strong>/template</strong> – docker-compose, Dockerfile, sozlama fayllari</div>
+        <div class="bg-indigo-50 p-2 rounded">🌍 3 til jsonlari <br> (uz, ru, uz-kirill)</div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center text-slate-500 text-sm border-t pt-8 mt-6 flex flex-col md:flex-row justify-between items-center">
+      <span>© Triple seven MChJ, 2025 - <span id="current-year"></span>. Barcha huquqlar himoyalangan.</span>
+      <span class="mt-2 md:mt-0">⚡ Fitness CRM — mukammal boshqaruv tizimi</span>
+    </footer>
+  </main>
+
+  <a href="#" class="fixed bottom-6 right-6 bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-full shadow-lg transition z-30">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" /></svg>
+  </a>
+
+  <script>document.getElementById("current-year").innerText = new Date().getFullYear();</script>
+</body>
+</html>
