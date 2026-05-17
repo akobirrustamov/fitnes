@@ -1,21 +1,23 @@
 package com.example.backend.Services.GuestFeedbackService;
 
+import com.example.backend.Entity.Feedback;
 import com.example.backend.Payload.req.GuestFeedbackSendRequest;
 import com.example.backend.Payload.req.GuestRegisterRequest;
+import com.example.backend.Repository.FeedbackRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class GuestFeedbackServiceImpl implements GuestFeedbackService {
 
-    private final JdbcTemplate jdbc;
+    private final FeedbackRepo feedbackRepo;
 
     @Override
     public HttpEntity<?> send(GuestFeedbackSendRequest request, String ipAddress) {
@@ -31,29 +33,19 @@ public class GuestFeedbackServiceImpl implements GuestFeedbackService {
                 null
         );
 
-        Integer feedbackId;
-        try {
-            feedbackId = jdbc.queryForObject(
-                    "SELECT add_feedback_from_guest(?, ?, ?, ?, ?)",
-                    Integer.class,
-                    request.getTitle(),
-                    mergedDescription,
-                    request.getSenderName(),
-                    phone,
-                    false
-            );
-        } catch (Exception e) {
-            feedbackId = jdbc.queryForObject(
-                    "INSERT INTO feedbacks(organization_id, title, description, fullname, phone_number, is_registration, is_seen, created_at) " +
-                            "VALUES (NULL, ?, ?, ?, ?, false, false, NOW()) RETURNING id",
-                    Integer.class,
-                    request.getTitle(),
-                    mergedDescription,
-                    request.getSenderName(),
-                    phone
-            );
-        }
+        Feedback savedFeedback = feedbackRepo.save(Feedback.builder()
+                .organizationId(null)
+                .title(request.getTitle())
+                .description(mergedDescription)
+                .fullname(request.getSenderName())
+                .phoneNumber(phone)
+                .isRegistration(false)
+                .isSeen(false)
+                .markup(0)
+                .createdAt(LocalDateTime.now())
+                .build());
 
+        Long feedbackId = savedFeedback.getId();
         if (feedbackId == null || feedbackId < 1) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Feedback yuborilmadi"));
@@ -91,28 +83,19 @@ public class GuestFeedbackServiceImpl implements GuestFeedbackService {
                 "Register request"
         );
 
-        Integer registrationId;
-        try {
-            registrationId = jdbc.queryForObject(
-                    "SELECT add_registration_request(?, ?, ?, ?)",
-                    Integer.class,
-                    companyTitle,
-                    request.getSenderName(),
-                    phone,
-                    mergedRegion
-            );
-        } catch (Exception e) {
-            registrationId = jdbc.queryForObject(
-                    "INSERT INTO feedbacks(organization_id, title, description, fullname, phone_number, is_registration, is_seen, created_at) " +
-                            "VALUES (NULL, ?, ?, ?, ?, true, false, NOW()) RETURNING id",
-                    Integer.class,
-                    companyTitle,
-                    mergedRegion,
-                    request.getSenderName(),
-                    phone
-            );
-        }
+        Feedback savedRegistration = feedbackRepo.save(Feedback.builder()
+                .organizationId(null)
+                .title(companyTitle)
+                .description(mergedRegion)
+                .fullname(request.getSenderName())
+                .phoneNumber(phone)
+                .isRegistration(true)
+                .isSeen(false)
+                .markup(0)
+                .createdAt(LocalDateTime.now())
+                .build());
 
+        Long registrationId = savedRegistration.getId();
         if (registrationId == null || registrationId < 1) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Registratsiya so'rovi yuborilmadi"));
@@ -140,18 +123,17 @@ public class GuestFeedbackServiceImpl implements GuestFeedbackService {
         StringBuilder sb = new StringBuilder();
         if (prefix != null && !prefix.isBlank()) sb.append(prefix.trim());
         if (description != null && !description.isBlank()) {
-            if (sb.length() > 0) sb.append("\n");
+            if (!sb.isEmpty()) sb.append("\n");
             sb.append(description.trim());
         }
         if (email != null && !email.isBlank()) {
-            if (sb.length() > 0) sb.append("\n");
+            if (!sb.isEmpty()) sb.append("\n");
             sb.append("Email: ").append(email.trim());
         }
         if (ip != null && !ip.isBlank()) {
-            if (sb.length() > 0) sb.append("\n");
+            if (!sb.isEmpty()) sb.append("\n");
             sb.append("IP: ").append(ip.trim());
         }
         return sb.toString();
     }
 }
-

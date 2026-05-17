@@ -1,6 +1,8 @@
 package com.example.backend.Services.DatesService;
 
+import com.example.backend.Entity.OrganizationDate;
 import com.example.backend.Payload.req.DateUpdateRequest;
+import com.example.backend.Repository.DatesRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -12,7 +14,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -32,7 +33,7 @@ import java.util.Map;
 @Slf4j
 public class DatesServiceImpl implements DatesService {
 
-    private final JdbcTemplate jdbc;
+    private final DatesRepo datesRepo;
 
     @Override
     public HttpEntity<?> getAll(Integer orgId, Integer month, Integer year) {
@@ -43,23 +44,11 @@ public class DatesServiceImpl implements DatesService {
         LocalDate from = LocalDate.of(year, month, 1);
         LocalDate to = from.plusMonths(1);
 
-        List<Map<String, Object>> data = jdbc.query(
-                "SELECT id, date, is_holiday, is_kanikul, organization_id " +
-                        "FROM dates WHERE organization_id=? AND date>=? AND date<? ORDER BY date ASC",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    Object date = rs.getObject("date");
-                    row.put("date", date == null ? null : date.toString());
-                    boolean isHoliday = rs.getBoolean("is_holiday") || rs.getBoolean("is_kanikul");
-                    row.put("isHoliday", isHoliday);
-                    row.put("organizationId", rs.getInt("organization_id"));
-                    return row;
-                },
-                orgId,
-                from,
-                to
-        );
+        List<Map<String, Object>> data = datesRepo
+                .findByOrganizationIdAndDateGreaterThanEqualAndDateLessThanOrderByDateAsc(orgId, from, to)
+                .stream()
+                .map(this::toListItem)
+                .toList();
 
         return ResponseEntity.ok(data);
     }
@@ -69,35 +58,14 @@ public class DatesServiceImpl implements DatesService {
     public HttpEntity<?> update(Integer orgId, Long id, DateUpdateRequest request) {
         boolean markHoliday = request.getIsHoliday() != null && request.getIsHoliday();
 
-        Integer fnRes = null;
-        try {
-            fnRes = jdbc.queryForObject(
-                    "SELECT update_date_kanikul(?, ?, ?)",
-                    Integer.class,
-                    orgId,
-                    id,
-                    markHoliday
-            );
-        } catch (Exception ignored) {
-            // fallback update below if function is unavailable
-        }
-
-        int affected;
-        if (fnRes != null) {
-            affected = fnRes;
-        } else {
-            affected = jdbc.update(
-                    "UPDATE dates SET is_kanikul=?, is_holiday=? WHERE id=? AND organization_id=?",
-                    markHoliday,
-                    markHoliday,
-                    id,
-                    orgId
-            );
-        }
-
-        if (affected < 1) {
+        OrganizationDate entity = datesRepo.findByIdAndOrganizationId(id, orgId).orElse(null);
+        if (entity == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Sana topilmadi"));
         }
+
+        entity.setKanikul(markHoliday);
+        entity.setHoliday(markHoliday);
+        datesRepo.save(entity);
 
         return ResponseEntity.ok(Map.of(
                 "dateId", id,
@@ -107,20 +75,10 @@ public class DatesServiceImpl implements DatesService {
 
     @Override
     public HttpEntity<?> download(Integer orgId) {
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT id, date, is_holiday, is_kanikul, organization_id " +
-                        "FROM dates WHERE organization_id=? ORDER BY date DESC",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    Object date = rs.getObject("date");
-                    row.put("date", date == null ? null : date.toString());
-                    row.put("isHoliday", rs.getBoolean("is_holiday") || rs.getBoolean("is_kanikul"));
-                    row.put("organizationId", rs.getInt("organization_id"));
-                    return row;
-                },
-                orgId
-        );
+        List<Map<String, Object>> rows = datesRepo.findByOrganizationIdOrderByDateDesc(orgId)
+                .stream()
+                .map(this::toListItem)
+                .toList();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Dates");
@@ -168,20 +126,10 @@ public class DatesServiceImpl implements DatesService {
     @Override
     public HttpEntity<?> capabilities(Integer orgId) {
         LocalDate today = LocalDate.now();
+        OrganizationDate row = datesRepo.findFirstByOrganizationIdAndDate(orgId, today).orElse(null);
 
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT is_kanikul FROM dates WHERE organization_id=? AND date=? LIMIT 1",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("isKanikul", rs.getBoolean("is_kanikul"));
-                    return row;
-                },
-                orgId,
-                today
-        );
-
-        boolean hasRecord = !rows.isEmpty();
-        boolean isKanikul = hasRecord && Boolean.TRUE.equals(rows.get(0).get("isKanikul"));
+        boolean hasRecord = row != null;
+        boolean isKanikul = row != null && row.isKanikul();
 
         return ResponseEntity.ok(Map.of(
                 "date", today.toString(),
@@ -189,5 +137,13 @@ public class DatesServiceImpl implements DatesService {
                 "hasRecord", hasRecord
         ));
     }
-}
 
+    private Map<String, Object> toListItem(OrganizationDate entity) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", entity.getId());
+        row.put("date", entity.getDate() == null ? null : entity.getDate().toString());
+        row.put("isHoliday", entity.isHoliday() || entity.isKanikul());
+        row.put("organizationId", entity.getOrganizationId());
+        return row;
+    }
+}

@@ -1,5 +1,7 @@
 package com.example.backend.Services.EventsService;
 
+import com.example.backend.Projection.EventRowProjection;
+import com.example.backend.Repository.EventEntryRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -8,10 +10,11 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -21,7 +24,6 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +33,7 @@ import java.util.Map;
 @Slf4j
 public class EventsServiceImpl implements EventsService {
 
-    private final JdbcTemplate jdbc;
+    private final EventEntryRepo eventEntryRepo;
 
     @Override
     public HttpEntity<?> getAll(Integer orgId,
@@ -46,100 +48,50 @@ public class EventsServiceImpl implements EventsService {
         int safePage = Math.max(1, page);
         int safeLimit = Math.min(500, Math.max(1, limit));
 
-        QueryData q = buildBaseQuery(orgId, personId, terminalId, eventType, startDate, endDate, false);
+        String direction = toDirection(eventType);
+        LocalDateTime from = parseDateTime(startDate);
+        LocalDateTime to = parseDateTime(endDate);
 
-        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM entries e " + q.where, Long.class, q.params.toArray());
+        Page<EventRowProjection> pageResult = eventEntryRepo.findFiltered(
+                orgId,
+                personId,
+                terminalId,
+                direction,
+                from,
+                to,
+                PageRequest.of(safePage - 1, safeLimit)
+        );
 
-        List<Object> listParams = new ArrayList<>(q.params);
-        listParams.add(safeLimit);
-        listParams.add((safePage - 1L) * safeLimit);
+        List<Map<String, Object>> data = pageResult.getContent().stream()
+                .map(this::toFullRow)
+                .toList();
 
-        String sql = q.select + q.where + " ORDER BY e.entry_time DESC LIMIT ? OFFSET ?";
-        List<Map<String, Object>> data = jdbc.query(sql, (rs, rowNum) -> {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", rs.getLong("id"));
-            row.put("personId", rs.getObject("person_id") == null ? null : rs.getLong("person_id"));
-            row.put("personName", rs.getString("person_name"));
-            row.put("personPhoto", rs.getString("person_photo"));
-            row.put("terminalId", rs.getObject("terminal_id") == null ? null : rs.getLong("terminal_id"));
-            row.put("terminalName", rs.getString("terminal_name"));
-            row.put("type", rs.getString("type"));
-            Object dt = rs.getObject("datetime");
-            row.put("datetime", dt == null ? null : dt.toString());
-            row.put("description", rs.getString("description"));
-            return row;
-        }, listParams.toArray());
-
-        long safeTotal = total == null ? 0L : total;
         return ResponseEntity.ok(Map.of(
                 "data", data,
-                "totalCount", safeTotal,
+                "totalCount", pageResult.getTotalElements(),
                 "page", safePage,
                 "limit", safeLimit,
-                "totalPages", (int) Math.ceil(safeTotal / (double) safeLimit)
+                "totalPages", pageResult.getTotalPages()
         ));
     }
 
     @Override
     public HttpEntity<?> getById(Integer orgId, Long id) {
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT e.id, e.person_id, p.full_name AS person_name, e.terminal_id, t.name AS terminal_name, " +
-                        "CASE WHEN UPPER(e.direction)='IN' THEN 'enter' ELSE 'exit' END AS type, " +
-                        "e.entry_time AS datetime, " +
-                        "CASE WHEN UPPER(e.direction)='IN' THEN 'Kirish' ELSE 'Chiqish' END AS description " +
-                        "FROM entries e " +
-                        "LEFT JOIN persons p ON p.id=e.person_id " +
-                        "LEFT JOIN terminals t ON t.id=e.terminal_id " +
-                        "WHERE e.id=? AND e.organization_id=?",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("personId", rs.getObject("person_id") == null ? null : rs.getLong("person_id"));
-                    row.put("personName", rs.getString("person_name"));
-                    row.put("terminalId", rs.getObject("terminal_id") == null ? null : rs.getLong("terminal_id"));
-                    row.put("terminalName", rs.getString("terminal_name"));
-                    row.put("type", rs.getString("type"));
-                    Object dt = rs.getObject("datetime");
-                    row.put("datetime", dt == null ? null : dt.toString());
-                    row.put("description", rs.getString("description"));
-                    return row;
-                },
-                id,
-                orgId
-        );
-
-        if (rows.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Hodisa topilmadi"));
-        }
-        return ResponseEntity.ok(rows.get(0));
+        return eventEntryRepo.findDetail(orgId, id)
+                .<HttpEntity<?>>map(row -> ResponseEntity.ok(toDetailRow(row)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Hodisa topilmadi")));
     }
 
     @Override
     public HttpEntity<?> getLastByPerson(Integer orgId, Long personId) {
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT e.id, CASE WHEN UPPER(e.direction)='IN' THEN 'enter' ELSE 'exit' END AS type, " +
-                        "e.entry_time AS datetime, t.name AS terminal_name " +
-                        "FROM entries e " +
-                        "LEFT JOIN terminals t ON t.id=e.terminal_id " +
-                        "WHERE e.organization_id=? AND e.person_id=? " +
-                        "ORDER BY e.entry_time DESC LIMIT 1",
-                (rs, rowNum) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("type", rs.getString("type"));
-                    Object dt = rs.getObject("datetime");
-                    row.put("datetime", dt == null ? null : dt.toString());
-                    row.put("terminalName", rs.getString("terminal_name"));
-                    return row;
-                },
-                orgId,
-                personId
-        );
-
-        if (rows.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Hodisa topilmadi"));
-        }
-        return ResponseEntity.ok(rows.get(0));
+        return eventEntryRepo.findLastByPerson(orgId, personId)
+                .<HttpEntity<?>>map(row -> ResponseEntity.ok(Map.of(
+                        "id", row.getId(),
+                        "type", toType(row.getDirection()),
+                        "datetime", row.getDatetime() == null ? null : row.getDatetime().toString(),
+                        "terminalName", row.getTerminalName()
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Hodisa topilmadi")));
     }
 
     @Override
@@ -161,20 +113,14 @@ public class EventsServiceImpl implements EventsService {
                                        String startDate,
                                        String endDate) {
 
-        QueryData q = buildBaseQuery(orgId, personId, terminalId, eventType, startDate, endDate, true);
-        String sql = q.select + q.where + " ORDER BY e.entry_time DESC";
+        String direction = toDirection(eventType);
+        LocalDateTime from = parseDateTime(startDate);
+        LocalDateTime to = parseDateTime(endDate);
 
-        List<Map<String, Object>> rows = jdbc.query(sql, (rs, rowNum) -> {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", rs.getLong("id"));
-            row.put("personName", rs.getString("person_name"));
-            row.put("terminalName", rs.getString("terminal_name"));
-            row.put("type", rs.getString("type"));
-            Object dt = rs.getObject("datetime");
-            row.put("datetime", dt == null ? null : dt.toString());
-            row.put("description", rs.getString("description"));
-            return row;
-        }, q.params.toArray());
+        List<Map<String, Object>> rows = eventEntryRepo.findFilteredForExport(orgId, personId, terminalId, direction, from, to)
+                .stream()
+                .map(this::toExportRow)
+                .toList();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Events");
@@ -221,59 +167,20 @@ public class EventsServiceImpl implements EventsService {
         }
     }
 
-    private QueryData buildBaseQuery(Integer orgId,
-                                     Long personId,
-                                     Long terminalId,
-                                     String eventType,
-                                     String startDate,
-                                     String endDate,
-                                     boolean downloadMode) {
+    private String toDirection(String eventType) {
+        if (eventType == null || eventType.isBlank()) return null;
+        String norm = eventType.trim().toLowerCase();
+        if ("enter".equals(norm) || "in".equals(norm)) return "IN";
+        if ("exit".equals(norm) || "out".equals(norm)) return "OUT";
+        return null;
+    }
 
-        QueryData q = new QueryData();
-        q.select = "SELECT e.id, e.person_id, p.full_name AS person_name, p.photo_url AS person_photo, " +
-                "e.terminal_id, t.name AS terminal_name, " +
-                "CASE WHEN UPPER(e.direction)='IN' THEN 'enter' ELSE 'exit' END AS type, " +
-                "e.entry_time AS datetime, " +
-                "CASE WHEN UPPER(e.direction)='IN' THEN 'Kirish' ELSE 'Chiqish' END AS description " +
-                "FROM entries e " +
-                "LEFT JOIN persons p ON p.id=e.person_id " +
-                "LEFT JOIN terminals t ON t.id=e.terminal_id ";
+    private String toType(String direction) {
+        return "IN".equalsIgnoreCase(direction) ? "enter" : "exit";
+    }
 
-        StringBuilder where = new StringBuilder(" WHERE e.organization_id=? ");
-        List<Object> params = new ArrayList<>();
-        params.add(orgId);
-
-        if (personId != null) {
-            where.append(" AND e.person_id=? ");
-            params.add(personId);
-        }
-        if (terminalId != null) {
-            where.append(" AND e.terminal_id=? ");
-            params.add(terminalId);
-        }
-        if (eventType != null && !eventType.isBlank()) {
-            String norm = eventType.trim().toLowerCase();
-            if ("enter".equals(norm) || "in".equals(norm)) {
-                where.append(" AND UPPER(e.direction)='IN' ");
-            } else if ("exit".equals(norm) || "out".equals(norm)) {
-                where.append(" AND UPPER(e.direction)='OUT' ");
-            }
-        }
-
-        LocalDateTime from = parseDateTime(startDate);
-        LocalDateTime to = parseDateTime(endDate);
-        if (from != null) {
-            where.append(" AND e.entry_time >= ? ");
-            params.add(from);
-        }
-        if (to != null) {
-            where.append(" AND e.entry_time <= ? ");
-            params.add(to);
-        }
-
-        q.where = where.toString();
-        q.params = params;
-        return q;
+    private String toDescription(String direction) {
+        return "IN".equalsIgnoreCase(direction) ? "Kirish" : "Chiqish";
     }
 
     private LocalDateTime parseDateTime(String val) {
@@ -287,10 +194,41 @@ public class EventsServiceImpl implements EventsService {
         }
     }
 
-    private static class QueryData {
-        String select;
-        String where;
-        List<Object> params;
+    private Map<String, Object> toFullRow(EventRowProjection row) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", row.getId());
+        m.put("personId", row.getPersonId());
+        m.put("personName", row.getPersonName());
+        m.put("personPhoto", row.getPersonPhoto());
+        m.put("terminalId", row.getTerminalId());
+        m.put("terminalName", row.getTerminalName());
+        m.put("type", toType(row.getDirection()));
+        m.put("datetime", row.getDatetime() == null ? null : row.getDatetime().toString());
+        m.put("description", toDescription(row.getDirection()));
+        return m;
+    }
+
+    private Map<String, Object> toDetailRow(EventRowProjection row) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", row.getId());
+        m.put("personId", row.getPersonId());
+        m.put("personName", row.getPersonName());
+        m.put("terminalId", row.getTerminalId());
+        m.put("terminalName", row.getTerminalName());
+        m.put("type", toType(row.getDirection()));
+        m.put("datetime", row.getDatetime() == null ? null : row.getDatetime().toString());
+        m.put("description", toDescription(row.getDirection()));
+        return m;
+    }
+
+    private Map<String, Object> toExportRow(EventRowProjection row) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", row.getId());
+        m.put("personName", row.getPersonName());
+        m.put("terminalName", row.getTerminalName());
+        m.put("type", toType(row.getDirection()));
+        m.put("datetime", row.getDatetime() == null ? null : row.getDatetime().toString());
+        m.put("description", toDescription(row.getDirection()));
+        return m;
     }
 }
-

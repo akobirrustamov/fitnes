@@ -1,14 +1,16 @@
 package com.example.backend.Services.FeedbacksService;
 
+import com.example.backend.Entity.Feedback;
 import com.example.backend.Payload.req.FeedbackSendRequest;
+import com.example.backend.Repository.FeedbackRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
@@ -16,7 +18,7 @@ import java.util.Map;
 @Slf4j
 public class FeedbacksServiceImpl implements FeedbacksService {
 
-    private final JdbcTemplate jdbc;
+    private final FeedbackRepo feedbackRepo;
 
     @Override
     public HttpEntity<?> send(Integer orgId, FeedbackSendRequest request) {
@@ -31,29 +33,18 @@ public class FeedbacksServiceImpl implements FeedbacksService {
                     : mergedDescription + "\nEmail: " + request.getEmail().trim();
         }
 
-        Integer feedbackId;
-        try {
-            feedbackId = jdbc.queryForObject(
-                    "SELECT add_feedback_from_organization(?, ?, ?, ?)",
-                    Integer.class,
-                    orgId,
-                    request.getTitle(),
-                    mergedDescription,
-                    false
-            );
-        } catch (Exception e) {
-            // fallback if function not found
-            feedbackId = jdbc.queryForObject(
-                    "INSERT INTO feedbacks(organization_id, title, description, phone_number, is_registration, is_seen, created_at) " +
-                            "VALUES (?, ?, ?, ?, false, false, NOW()) RETURNING id",
-                    Integer.class,
-                    orgId,
-                    request.getTitle(),
-                    mergedDescription,
-                    request.getPhoneNumber()
-            );
-        }
+        Feedback saved = feedbackRepo.save(Feedback.builder()
+                .organizationId(orgId)
+                .title(request.getTitle())
+                .description(mergedDescription)
+                .phoneNumber(request.getPhoneNumber())
+                .isRegistration(false)
+                .isSeen(false)
+                .markup(0)
+                .createdAt(LocalDateTime.now())
+                .build());
 
+        Long feedbackId = saved.getId();
         if (feedbackId == null || feedbackId < 1) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Feedback yuborilmadi"));

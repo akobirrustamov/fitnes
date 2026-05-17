@@ -1,6 +1,11 @@
 package com.example.backend.Services.GraphicsService;
 
+import com.example.backend.Entity.ApiSettings;
+import com.example.backend.Entity.OrganizationGraphics;
 import com.example.backend.Payload.req.GraphicsRequest;
+import com.example.backend.Repository.ApiSettingsRepo;
+import com.example.backend.Repository.OrganizationGraphicsRepo;
+import com.example.backend.Repository.PersonRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -12,7 +17,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -31,80 +35,64 @@ import java.util.Map;
 @Slf4j
 public class GraphicsServiceImpl implements GraphicsService {
 
-    private static final String TABLE = "organization_graphics";
-    private final JdbcTemplate jdbc;
+    private final OrganizationGraphicsRepo graphicsRepo;
+    private final PersonRepo personRepo;
+    private final ApiSettingsRepo apiSettingsRepo;
 
     @Override
     public HttpEntity<?> getAll(Integer orgId) {
-        ensureTables();
-
-        List<Map<String, Object>> data = jdbc.query(
-                "SELECT id, name, description, is_monday, is_tuesday, is_wednesday, is_thursday, is_friday, is_saturday, is_sunday, created_time " +
-                        "FROM " + TABLE + " WHERE organization_id=? AND deleted=false ORDER BY created_time DESC",
-                (rs, rowNum) -> toResponseRow(rs, true),
-                orgId
-        );
+        List<Map<String, Object>> data = graphicsRepo
+                .findByOrganizationIdAndDeletedFalseOrderByCreatedTimeDesc(orgId)
+                .stream()
+                .map(g -> toResponseRow(g, true))
+                .toList();
         return ResponseEntity.ok(data);
     }
 
     @Override
     public HttpEntity<?> getById(Integer orgId, Long id) {
-        ensureTables();
-
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT id, name, description, is_monday, is_tuesday, is_wednesday, is_thursday, is_friday, is_saturday, is_sunday " +
-                        "FROM " + TABLE + " WHERE id=? AND organization_id=? AND deleted=false",
-                (rs, rowNum) -> toResponseRow(rs, false),
-                id, orgId
-        );
-
-        if (rows.isEmpty()) {
+        OrganizationGraphics g = graphicsRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId)
+                .orElse(null);
+        if (g == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Grafik topilmadi"));
         }
-        return ResponseEntity.ok(rows.get(0));
+        return ResponseEntity.ok(toResponseRow(g, false));
     }
 
     @Override
     @Transactional
     public HttpEntity<?> create(Integer orgId, GraphicsRequest request) {
-        ensureTables();
-
         if (request.getName() == null || request.getName().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "name majburiy"));
         }
 
+        long currentCount = graphicsRepo.countByOrganizationIdAndDeletedFalse(orgId);
         int maxCount = maxGraphicsCount();
-        Integer currentCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM " + TABLE + " WHERE organization_id=? AND deleted=false",
-                Integer.class,
-                orgId
-        );
-        int safeCount = currentCount == null ? 0 : currentCount;
-        if (safeCount >= maxCount) {
+        if (currentCount >= maxCount) {
             return ResponseEntity.badRequest().body(Map.of(
                     "errorCode", "G001",
                     "message", "Grafiklar soni limitdan oshdi"
             ));
         }
 
-        Long id = jdbc.queryForObject(
-                "INSERT INTO " + TABLE + " (organization_id, name, description, is_monday, is_tuesday, is_wednesday, is_thursday, is_friday, is_saturday, is_sunday, created_time, deleted) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), false) RETURNING id",
-                Long.class,
-                orgId,
-                request.getName(),
-                request.getDescription(),
-                bool(request.getIsMonday()),
-                bool(request.getIsTuesday()),
-                bool(request.getIsWednesday()),
-                bool(request.getIsThursday()),
-                bool(request.getIsFriday()),
-                bool(request.getIsSaturday()),
-                bool(request.getIsSunday())
-        );
+        OrganizationGraphics saved = graphicsRepo.save(OrganizationGraphics.builder()
+                .organizationId(orgId)
+                .name(request.getName())
+                .description(request.getDescription())
+                .monday(bool(request.getIsMonday()))
+                .tuesday(bool(request.getIsTuesday()))
+                .wednesday(bool(request.getIsWednesday()))
+                .thursday(bool(request.getIsThursday()))
+                .friday(bool(request.getIsFriday()))
+                .saturday(bool(request.getIsSaturday()))
+                .sunday(bool(request.getIsSunday()))
+                .createdTime(LocalDateTime.now())
+                .updatedTime(null)
+                .deleted(false)
+                .build());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "id", id,
+                "id", saved.getId(),
                 "message", "Grafik muvaffaqiyatli yaratildi"
         ));
     }
@@ -112,37 +100,24 @@ public class GraphicsServiceImpl implements GraphicsService {
     @Override
     @Transactional
     public HttpEntity<?> update(Integer orgId, Long id, GraphicsRequest request) {
-        ensureTables();
-
-        if (!exists(orgId, id)) {
+        OrganizationGraphics g = graphicsRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId)
+                .orElse(null);
+        if (g == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Grafik topilmadi"));
         }
 
-        jdbc.update(
-                "UPDATE " + TABLE + " SET " +
-                        "name = COALESCE(?, name), " +
-                        "description = COALESCE(?, description), " +
-                        "is_monday = COALESCE(?, is_monday), " +
-                        "is_tuesday = COALESCE(?, is_tuesday), " +
-                        "is_wednesday = COALESCE(?, is_wednesday), " +
-                        "is_thursday = COALESCE(?, is_thursday), " +
-                        "is_friday = COALESCE(?, is_friday), " +
-                        "is_saturday = COALESCE(?, is_saturday), " +
-                        "is_sunday = COALESCE(?, is_sunday), " +
-                        "updated_time = NOW() " +
-                        "WHERE id=? AND organization_id=? AND deleted=false",
-                request.getName(),
-                request.getDescription(),
-                request.getIsMonday(),
-                request.getIsTuesday(),
-                request.getIsWednesday(),
-                request.getIsThursday(),
-                request.getIsFriday(),
-                request.getIsSaturday(),
-                request.getIsSunday(),
-                id,
-                orgId
-        );
+        if (request.getName() != null) g.setName(request.getName());
+        if (request.getDescription() != null) g.setDescription(request.getDescription());
+        if (request.getIsMonday() != null) g.setMonday(request.getIsMonday());
+        if (request.getIsTuesday() != null) g.setTuesday(request.getIsTuesday());
+        if (request.getIsWednesday() != null) g.setWednesday(request.getIsWednesday());
+        if (request.getIsThursday() != null) g.setThursday(request.getIsThursday());
+        if (request.getIsFriday() != null) g.setFriday(request.getIsFriday());
+        if (request.getIsSaturday() != null) g.setSaturday(request.getIsSaturday());
+        if (request.getIsSunday() != null) g.setSunday(request.getIsSunday());
+        g.setUpdatedTime(LocalDateTime.now());
+
+        graphicsRepo.save(g);
 
         return ResponseEntity.ok(Map.of("message", "Grafik muvaffaqiyatli yangilandi"));
     }
@@ -150,40 +125,34 @@ public class GraphicsServiceImpl implements GraphicsService {
     @Override
     @Transactional
     public HttpEntity<?> delete(Integer orgId, Long id) {
-        ensureTables();
-
-        if (!exists(orgId, id)) {
+        OrganizationGraphics g = graphicsRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId)
+                .orElse(null);
+        if (g == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Grafik topilmadi"));
         }
 
-        Integer personsCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM persons WHERE organization_id=? AND deleted=false AND graphic_id=?",
-                Integer.class,
-                orgId,
-                id.intValue()
-        );
-
-        if (personsCount != null && personsCount > 0) {
+        long personsCount = personRepo.countByOrganizationIdAndDeletedFalseAndGraphicId(orgId, id.intValue());
+        if (personsCount > 0) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                     "errorCode", "G002",
                     "message", "Grafik ishlatilmoqda, o'chirib bo'lmaydi"
             ));
         }
 
-        jdbc.update("UPDATE " + TABLE + " SET deleted=true, updated_time=NOW() WHERE id=? AND organization_id=?", id, orgId);
+        g.setDeleted(true);
+        g.setUpdatedTime(LocalDateTime.now());
+        graphicsRepo.save(g);
+
         return ResponseEntity.ok(Map.of("message", "Grafik muvaffaqiyatli o'chirildi"));
     }
 
     @Override
     public HttpEntity<?> downloadExcel(Integer orgId) {
-        ensureTables();
-
-        List<Map<String, Object>> rows = jdbc.query(
-                "SELECT id, name, description, is_monday, is_tuesday, is_wednesday, is_thursday, is_friday, is_saturday, is_sunday, created_time " +
-                        "FROM " + TABLE + " WHERE organization_id=? AND deleted=false ORDER BY created_time DESC",
-                (rs, rowNum) -> toResponseRow(rs, true),
-                orgId
-        );
+        List<Map<String, Object>> rows = graphicsRepo
+                .findByOrganizationIdAndDeletedFalseOrderByCreatedTimeDesc(orgId)
+                .stream()
+                .map(g -> toResponseRow(g, true))
+                .toList();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Graphics");
@@ -236,49 +205,11 @@ public class GraphicsServiceImpl implements GraphicsService {
         }
     }
 
-    private boolean exists(Integer orgId, Long id) {
-        Boolean exists = jdbc.queryForObject(
-                "SELECT EXISTS(SELECT 1 FROM " + TABLE + " WHERE id=? AND organization_id=? AND deleted=false)",
-                Boolean.class,
-                id,
-                orgId
-        );
-        return Boolean.TRUE.equals(exists);
-    }
-
-    private void ensureTables() {
-        jdbc.execute("CREATE TABLE IF NOT EXISTS organization_graphics (" +
-                "id BIGSERIAL PRIMARY KEY," +
-                "organization_id INTEGER NOT NULL," +
-                "name VARCHAR(255) NOT NULL," +
-                "description VARCHAR(500)," +
-                "is_monday BOOLEAN NOT NULL DEFAULT false," +
-                "is_tuesday BOOLEAN NOT NULL DEFAULT false," +
-                "is_wednesday BOOLEAN NOT NULL DEFAULT false," +
-                "is_thursday BOOLEAN NOT NULL DEFAULT false," +
-                "is_friday BOOLEAN NOT NULL DEFAULT false," +
-                "is_saturday BOOLEAN NOT NULL DEFAULT false," +
-                "is_sunday BOOLEAN NOT NULL DEFAULT false," +
-                "created_time TIMESTAMP NOT NULL DEFAULT NOW()," +
-                "updated_time TIMESTAMP," +
-                "deleted BOOLEAN NOT NULL DEFAULT false" +
-                ")");
-        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_org_graphics_org ON organization_graphics(organization_id)");
-
-        jdbc.execute("CREATE TABLE IF NOT EXISTS api_settings (" +
-                "id BIGSERIAL PRIMARY KEY," +
-                "max_graphics_count INTEGER NOT NULL DEFAULT 50" +
-                ")");
-        jdbc.execute("INSERT INTO api_settings(max_graphics_count) " +
-                "SELECT 50 WHERE NOT EXISTS (SELECT 1 FROM api_settings)");
-    }
-
     private int maxGraphicsCount() {
-        Integer max = jdbc.queryForObject(
-                "SELECT max_graphics_count FROM api_settings ORDER BY id DESC LIMIT 1",
-                Integer.class
-        );
-        return max == null ? 50 : Math.max(max, 1);
+        return apiSettingsRepo.findTopByOrderByIdDesc()
+                .map(ApiSettings::getMaxGraphicsCount)
+                .map(v -> Math.max(1, v == null ? 50 : v))
+                .orElse(50);
     }
 
     private boolean bool(Boolean value) {
@@ -289,23 +220,21 @@ public class GraphicsServiceImpl implements GraphicsService {
         return Boolean.TRUE.equals(value) ? "Ha" : "Yo'q";
     }
 
-    private Map<String, Object> toResponseRow(java.sql.ResultSet rs, boolean withCreated) throws java.sql.SQLException {
+    private Map<String, Object> toResponseRow(OrganizationGraphics g, boolean withCreated) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id", rs.getLong("id"));
-        m.put("name", rs.getString("name"));
-        m.put("description", rs.getString("description"));
-        m.put("isMonday", rs.getBoolean("is_monday"));
-        m.put("isTuesday", rs.getBoolean("is_tuesday"));
-        m.put("isWednesday", rs.getBoolean("is_wednesday"));
-        m.put("isThursday", rs.getBoolean("is_thursday"));
-        m.put("isFriday", rs.getBoolean("is_friday"));
-        m.put("isSaturday", rs.getBoolean("is_saturday"));
-        m.put("isSunday", rs.getBoolean("is_sunday"));
+        m.put("id", g.getId());
+        m.put("name", g.getName());
+        m.put("description", g.getDescription());
+        m.put("isMonday", g.isMonday());
+        m.put("isTuesday", g.isTuesday());
+        m.put("isWednesday", g.isWednesday());
+        m.put("isThursday", g.isThursday());
+        m.put("isFriday", g.isFriday());
+        m.put("isSaturday", g.isSaturday());
+        m.put("isSunday", g.isSunday());
         if (withCreated) {
-            Object created = rs.getObject("created_time");
-            m.put("createdTime", created == null ? null : created.toString());
+            m.put("createdTime", g.getCreatedTime() == null ? null : g.getCreatedTime().toString());
         }
         return m;
     }
 }
-
