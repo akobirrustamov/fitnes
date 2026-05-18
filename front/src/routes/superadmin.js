@@ -4,7 +4,8 @@ import SuperAdminUsers from "views/superadmin/users";
 import SuperAdminProvinces from "views/superadmin/provinces";
 import SuperAdminRegions from "views/superadmin/regions";
 import SuperAdminOrganizations from "views/superadmin/organizations";
-import SuperAdminTariffs from "views/superadmin/tariffs";
+import SuperAdminCategories from "views/superadmin/categories";
+import SuperAdminMarket from "views/superadmin/market";
 import SuperAdminSettings from "views/superadmin/settings";
 import SuperAdminServers from "views/superadmin/servers";
 import SuperAdminNews from "views/superadmin/news";
@@ -63,11 +64,18 @@ const routes = [
     component: <SuperAdminOrganizations />,
   },
   {
-    name: "Tariflar",
+    name: "Mahsulot turlari",
     layout: "/superadmin",
-    path: "tariffs",
+    path: "categories",
     icon: <MdCategory className="h-6 w-6" />,
-    component: <SuperAdminTariffs />,
+    component: <SuperAdminCategories />,
+  },
+  {
+    name: "Mahsulotlar",
+    layout: "/superadmin",
+    path: "market",
+    hidden: true,
+    component: <SuperAdminMarket />,
   },
   {
     name: "Serverlar",

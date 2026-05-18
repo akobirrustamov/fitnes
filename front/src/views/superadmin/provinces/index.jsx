@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import ApiCall from "../../../config";
-import { Plus, Edit, Trash2, X, CheckCircle2 } from "lucide-react";
+import { Plus, Edit, Trash2, CheckCircle2, KeyRound } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function ProvincesPage() {
   const [provinces, setProvinces] = useState([]);
@@ -19,8 +21,11 @@ export default function ProvincesPage() {
     passwordHint: "",
   });
   const [editId, setEditId] = useState(null);
-  const [message, setMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const safeArray = (value) => (Array.isArray(value) ? value : []);
   const provincesList = safeArray(provinces);
@@ -30,12 +35,7 @@ export default function ProvincesPage() {
   }, []);
 
   const fetchProvinces = async () => {
-    const result = await ApiCall(
-      "/api/v1/admin/provinces/getAll",
-      "GET",
-      null,
-      { active: true }
-    );
+    const result = await ApiCall("/api/v1/admin/provinces/getAll", "GET");
     if (!result?.error) {
       setProvinces(result.data || []);
     }
@@ -59,7 +59,6 @@ export default function ProvincesPage() {
       passwordHint: "",
     });
     setEditId(null);
-    setMessage("");
   };
 
   const handleEdit = (province) => {
@@ -75,7 +74,6 @@ export default function ProvincesPage() {
       businessSphere: province.businessSphere || "",
       passwordHint: province.passwordHint || "",
     });
-    setMessage("");
     setShowModal(true);
   };
 
@@ -114,11 +112,49 @@ export default function ProvincesPage() {
 
     if (!result?.error) {
       await fetchProvinces();
-      resetForm();
-      setShowModal(false);
-      setMessage(editId ? "Viloyat yangilandi." : "Yangi viloyat yaratildi.");
+      closeModal();
+      toast.success(editId ? "Viloyat yangilandi." : "Yangi viloyat yaratildi.");
     } else {
-      setMessage("Xatolik yuz berdi. Iltimos, ma'lumotlarni tekshiring.");
+      toast.error(result?.data?.message || "Xatolik yuz berdi. Ma'lumotlarni tekshiring.");
+    }
+  };
+
+  const openPasswordModal = (province) => {
+    setPasswordTarget(province);
+    setNewPassword("");
+    setShowPasswordModal(true);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordLoading(true);
+    const result = await ApiCall(
+      `/api/v1/admin/provinces/changePassword/${passwordTarget.id}`,
+      "POST",
+      { password: newPassword }
+    );
+    setPasswordLoading(false);
+    if (!result?.error) {
+      setShowPasswordModal(false);
+      toast.success("Parol muvaffaqiyatli o'zgartirildi.");
+    } else {
+      toast.error(result?.data?.message || "Xatolik yuz berdi.");
+    }
+  };
+
+  const handleToggleActive = async (province) => {
+    const newActive = !province.active;
+    const result = await ApiCall(
+      `/api/v1/admin/provinces/setActive?id=${province.id}&active=${newActive}`,
+      "GET"
+    );
+    if (!result?.error) {
+      setProvinces((prev) =>
+        prev.map((p) => (p.id === province.id ? { ...p, active: newActive } : p))
+      );
+      toast.success(newActive ? "Viloyat faollashtirildi." : "Viloyat bloklandi.");
+    } else {
+      toast.error(result?.data?.message || "Xatolik yuz berdi.");
     }
   };
 
@@ -130,9 +166,9 @@ export default function ProvincesPage() {
     );
     if (!result?.error) {
       await fetchProvinces();
-      setMessage("Viloyat o'chirildi.");
+      toast.success("Viloyat o'chirildi.");
     } else {
-      setMessage("Viloyatni o'chirishda xatolik yuz berdi.");
+      toast.error(result?.data?.message || "Viloyatni o'chirishda xatolik yuz berdi.");
     }
   };
 
@@ -145,7 +181,7 @@ export default function ProvincesPage() {
               <h1 className="text-gray-900 text-2xl font-semibold">
                 Viloyatlar
               </h1>
-              <p className="text-gray-600 mt-1 text-sm">
+              <p className="text-gray-800 mt-1 text-sm">
                 Viloyatlarni ro'yxatini ko'rish va boshqarish.
               </p>
             </div>
@@ -157,19 +193,13 @@ export default function ProvincesPage() {
             </button>
           </div>
 
-          {message && (
-            <div className="mt-4 rounded-xl bg-green-50 p-4 text-sm text-green-700">
-              {message}
-            </div>
-          )}
-
           <div className="mt-6">
             <div className="border-gray-200 overflow-hidden rounded-2xl border bg-white shadow-sm">
               <div className="border-gray-200 bg-gray-50 text-gray-900 border-b px-6 py-4 font-semibold">
                 Viloyatlar ro'yxati
               </div>
               <div className="overflow-x-auto px-6 py-4">
-                <table className="text-gray-600 min-w-full text-left text-sm">
+                <table className="text-gray-800 min-w-full text-left text-sm">
                   <thead>
                     <tr>
                       <th className="pb-3 font-medium">ID</th>
@@ -201,15 +231,20 @@ export default function ProvincesPage() {
                             {province.phoneNumber || "—"}
                           </td>
                           <td className="py-3">
-                            {province.active ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
-                                <CheckCircle2 size={14} /> Faol
-                              </span>
-                            ) : (
-                              <span className="bg-gray-100 text-gray-600 rounded-full px-2 py-1 text-xs font-semibold">
-                                Bloklangan
-                              </span>
-                            )}
+                            <button
+                              onClick={() => handleToggleActive(province)}
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold transition hover:opacity-70 ${
+                                province.active
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {province.active ? (
+                                <><CheckCircle2 size={12} /> Faol</>
+                              ) : (
+                                "Bloklangan"
+                              )}
+                            </button>
                           </td>
                           <td className="py-3 text-right">
                             <button
@@ -217,6 +252,12 @@ export default function ProvincesPage() {
                               className="bg-gray-100 text-gray-700 hover:bg-gray-200 mr-2 rounded-lg px-3 py-1 text-sm"
                             >
                               <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => openPasswordModal(province)}
+                              className="mr-2 rounded-lg bg-amber-100 px-3 py-1 text-sm text-amber-700 hover:bg-amber-200"
+                            >
+                              <KeyRound size={14} />
                             </button>
                             <button
                               onClick={() => handleDelete(province.id)}
@@ -235,6 +276,7 @@ export default function ProvincesPage() {
           </div>
         </div>
       </div>
+
       <Modal open={showModal} onClose={closeModal} center>
         <div className="w-[520px] max-w-full p-6">
           <div className="text-gray-900 mb-4 text-lg font-semibold">
@@ -362,21 +404,58 @@ export default function ProvincesPage() {
                 disabled={loading}
                 className="bg-gray-900 hover:bg-gray-700 inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {editId ? "Yangilash" : "Saqlash"}
+                {loading ? "Saqlanmoqda..." : editId ? "Yangilash" : "Saqlash"}
               </button>
-              {editId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center justify-center rounded-xl border bg-white px-4 py-3 text-sm font-semibold transition"
-                >
-                  Bekor qilish
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={closeModal}
+                className="border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center justify-center rounded-xl border bg-white px-4 py-3 text-sm font-semibold transition"
+              >
+                Bekor qilish
+              </button>
             </div>
           </form>
         </div>
       </Modal>
+
+      <Modal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} center>
+        <div className="w-[380px] max-w-full p-6">
+          <div className="mb-4 text-lg font-semibold text-gray-900">
+            Parolni o'zgartirish — {passwordTarget?.name}
+          </div>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Yangi parol</label>
+              <input
+                required
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
+                placeholder="Yangi parol"
+              />
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={passwordLoading}
+                className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-700 disabled:opacity-60"
+              >
+                {passwordLoading ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(false)}
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              >
+                Bekor qilish
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 }

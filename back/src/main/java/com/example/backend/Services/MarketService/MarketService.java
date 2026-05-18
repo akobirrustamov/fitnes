@@ -15,5 +15,7 @@ public interface MarketService {
     HttpEntity<?> delete(Integer orgId, Long id);
 
     HttpEntity<?> sell(Integer orgId, MarketSellRequest request);
+
+    HttpEntity<?> getSuggestions(Integer categoryId);
 }
 

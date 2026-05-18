@@ -260,6 +260,14 @@ public class MarketServiceImpl implements MarketService {
         ));
     }
 
+    @Override
+    public HttpEntity<?> getSuggestions(Integer categoryId) {
+        List<String> names = categoryId != null
+                ? marketProductRepo.findDistinctNamesByCategoryId(categoryId)
+                : marketProductRepo.findAllDistinctNames();
+        return ResponseEntity.ok(names);
+    }
+
     private BigDecimal nvl(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
     }

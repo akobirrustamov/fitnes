@@ -47,24 +47,29 @@ public class MarketController {
 
     @GetMapping("/getAll")
     public HttpEntity<?> getAll(HttpServletRequest request,
+                                @RequestParam(required = false) Integer organizationId,
                                 @RequestParam(required = false) Integer categoryId,
                                 @RequestParam(defaultValue = "1") int page,
                                 @RequestParam(defaultValue = "50") int limit) {
-        Integer orgId = resolveOrgId(request);
+        Integer orgId = organizationId != null ? organizationId : resolveOrgId(request);
         if (orgId == null) return unauthorized();
         return marketService.getAll(orgId, categoryId, page, limit);
     }
 
     @GetMapping("/getById")
-    public HttpEntity<?> getById(HttpServletRequest request, @RequestParam Long id) {
-        Integer orgId = resolveOrgId(request);
+    public HttpEntity<?> getById(HttpServletRequest request,
+                                 @RequestParam Long id,
+                                 @RequestParam(required = false) Integer organizationId) {
+        Integer orgId = organizationId != null ? organizationId : resolveOrgId(request);
         if (orgId == null) return unauthorized();
         return marketService.getById(orgId, id);
     }
 
     @PostMapping("/create")
-    public HttpEntity<?> create(HttpServletRequest request, @RequestBody MarketProductCreateRequest body) {
-        Integer orgId = resolveOrgId(request);
+    public HttpEntity<?> create(HttpServletRequest request,
+                                @RequestParam(required = false) Integer organizationId,
+                                @RequestBody MarketProductCreateRequest body) {
+        Integer orgId = organizationId != null ? organizationId : resolveOrgId(request);
         if (orgId == null) return unauthorized();
         return marketService.create(orgId, body);
     }
@@ -72,17 +77,25 @@ public class MarketController {
     @PutMapping("/update")
     public HttpEntity<?> update(HttpServletRequest request,
                                 @RequestParam Long id,
+                                @RequestParam(required = false) Integer organizationId,
                                 @RequestBody MarketProductUpdateRequest body) {
-        Integer orgId = resolveOrgId(request);
+        Integer orgId = organizationId != null ? organizationId : resolveOrgId(request);
         if (orgId == null) return unauthorized();
         return marketService.update(orgId, id, body);
     }
 
     @DeleteMapping("/delete")
-    public HttpEntity<?> delete(HttpServletRequest request, @RequestParam Long id) {
-        Integer orgId = resolveOrgId(request);
+    public HttpEntity<?> delete(HttpServletRequest request,
+                                @RequestParam Long id,
+                                @RequestParam(required = false) Integer organizationId) {
+        Integer orgId = organizationId != null ? organizationId : resolveOrgId(request);
         if (orgId == null) return unauthorized();
         return marketService.delete(orgId, id);
+    }
+
+    @GetMapping("/suggestions")
+    public HttpEntity<?> suggestions(@RequestParam(required = false) Integer categoryId) {
+        return marketService.getSuggestions(categoryId);
     }
 
     @PostMapping("/sell")

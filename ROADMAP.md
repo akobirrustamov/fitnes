@@ -2,6 +2,184 @@
 
 ---
 
+## 🔌 КАК УСТРОЕН БЭКЕНД — полный справочник
+
+> Читай этот раздел перед написанием любого API-вызова. Не угадывай пути и методы — смотри сюда или в `api-doc.md`.
+
+---
+
+### 1. ApiCall — как работает
+
+`ApiCall(url, method, data, params)` — обёртка над axios, файл `src/config/index.js`.
+
+| Ситуация | Что возвращает | Как проверять |
+|---|---|---|
+| 2xx + непустое тело | `{ error: false, data: <тело> }` | `!result?.error` → `true` |
+| Любая ошибка (4xx, 5xx) | `{ error: true, data: <тело ошибки> }` | `result?.error` → `true` |
+| 2xx + пустое тело | `undefined` | `!result?.error` → `true` (тоже успех!) |
+
+`result.data` — это уже распакованное тело ответа. Не путай с `res.data` axios.
+
+---
+
+### 2. Форматы ответов — зависит от эндпоинта
+
+#### Списки
+| Контроллер | Формат ответа | Как читать |
+|---|---|---|
+| `provinces/getAll` | `[{...}]` — массив напрямую | `result.data` |
+| `categories/getAll` | `[{...}]` — массив напрямую | `result.data` |
+| `regions/getAll` | `{ data:[...], totalCount:N, page:N, pageSize:N }` | `result.data.data` |
+| `monitors/getAll` | `{ data:[...], totalCount:N, page:N, pageSize:N }` | `result.data.data` |
+| `organizations/getAll` | `{ data:[...], totalCount:N, page:N, limit:N, totalPages:N }` | `result.data.data` |
+| `monitors/getOrganizations` | `{ data:[...], total:N }` | `result.data.data` |
+| `monitors/getUnassignedOrganizations` | `{ data:[...], total:N }` | `result.data.data` |
+| `regions/getUnassignedOrganizations` | `{ data:[...], total:N }` | `result.data.data` |
+
+#### Мутации (POST / PUT / DELETE)
+Все возвращают `{ <entity>Id: N, message: "..." }` или просто `{ message: "..." }`.  
+Проверяй только `!result?.error`, `result.data` нужен редко.
+
+#### Профиль
+`GET /api/v1/profile/view` → объект напрямую `{...}` (разный для super_admin и director).
+
+---
+
+### 3. Полная таблица эндпоинтов суперадмина
+
+#### AUTH
+| Действие | Метод | URL |
+|---|---|---|
+| Логин | `POST` | `/api/v1/auth/login` |
+| Обновить токен | `POST` | `/api/v1/auth/refreshToken` |
+| Выход | `POST` | `/api/v1/auth/logOut` |
+| Запрос SMS для сброса пароля | `GET` | `/api/v1/auth/changePasswordRequest?login=` |
+| Принять SMS код | `GET` | `/api/v1/auth/acceptSmsCode?reqid=&code=` |
+
+Тело логина: `{ username, password }`. Ответ: `{ accessToken, refreshToken, userId, roleId, roleName }`.  
+Сохранять в localStorage: `access_token`, `refresh_token`.  
+При 401 — автоматически пробуем `POST /api/v1/auth/refresh?refreshToken=...` (уже встроено в ApiCall).
+
+#### ПРОФИЛЬ (`/api/v1/profile`)
+| Действие | Метод | URL |
+|---|---|---|
+| Просмотр | `GET` | `/api/v1/profile/view` |
+| Обновление | `POST` | `/api/v1/profile/update` |
+| Смена пароля | `POST` | `/api/v1/profile/changePassword` |
+
+#### ЗАГРУЗКА ФАЙЛОВ (`/api/v1/systemC`)
+| Действие | Метод | URL | Примечание |
+|---|---|---|---|
+| Загрузить фото | `POST` | `/api/v1/systemC/upload` | `multipart/form-data`, поле `photo`, max 200KB, только JPEG |
+| Скачать фото | `GET` | `/api/v1/systemC/download?url=` | — |
+
+Ответ upload: `{ url, thumbnailUrl }`. Используй `url` чтобы сохранить в базу.
+
+#### CATEGORIES (`/api/v1/admin/categories`) — новый Spring Boot контроллер
+| Действие | Метод | URL |
+|---|---|---|
+| Список | `GET` | `/getAll` → `[{...}]` |
+| По ID | `GET` | `/getById?id=` |
+| Создать | `POST` | `/create` |
+| Обновить | `PUT` | `/update?id=` |
+| Удалить | `DELETE` | `/delete?id=` |
+
+Поля создания: `{ nameUz, nameRu, nameUzk, description, iconUrl, displayOrder }`.
+
+#### ORGANIZATIONS (`/api/v1/admin/organizations`) — новый контроллер
+| Действие | Метод | URL | Примечание |
+|---|---|---|---|
+| Список | `GET` | `/getAll?provinceId=&regionId=&active=&search=&page=&limit=` | `result.data.data` |
+| По ID | `GET` | `/getById?id=` | query param |
+| Создать | `POST` | `/create` | пароль генерируется автоматически, возвращается в ответе |
+| Обновить | `PUT` | `/update?id=` | логин не меняется |
+| Активация | `PUT` | `/setActive?id=` | тело: `{ active: bool }` |
+| Смена пароля | `PUT` | `/changePassword?id=` | тело: `{ newPassword, passwordHint }` |
+| Удалить | `DELETE` | `/delete?id=` | soft delete |
+
+Поля создания: `{ name, login, directorName, phoneNumber, regionId, businessSphere, location, passwordHint }`.  
+Ответ создания содержит `{ organizationId, password, message }` — **пароль показывать пользователю!**
+
+#### MONITORS (`/api/v1/admin/monitors`) — старый SQL контроллер
+| Действие | Метод | URL | Примечание |
+|---|---|---|---|
+| Список | `GET` | `/getAll?part=&active=&page=&pageSize=` | `result.data.data` |
+| По ID | `GET` | `/getById/{id}` | **path param** |
+| Создать | `POST` | `/add` | — |
+| Обновить | `PUT` | `/update?id=` | — |
+| Удалить | `DELETE` | `/delete?id=` | — |
+| Активация | `POST` | `/setActive/{id}?active=bool` | **POST + path param** |
+| Смена пароля | `POST` | `/changePassword/{id}` | тело: `{ password }` |
+| Прикрепить организацию | `POST` | `/addOrganization?monitorId=&organizationId=` | — |
+| Открепить организацию | `DELETE` | `/removeOrganization?monitorId=&organizationId=` | — |
+| Организации монитора | `GET` | `/getOrganizations?monitorId=` | `result.data.data` |
+| Непривязанные организации | `GET` | `/getUnassignedOrganizations` | `result.data.data` |
+
+Поля создания: `{ name, login, password, phoneNumber, description, passwordHint }`.
+
+#### REGIONS (`/api/v1/admin/regions`) — старый SQL контроллер
+| Действие | Метод | URL | Примечание |
+|---|---|---|---|
+| Список | `GET` | `/getAll?part=&active=&provinceId=&page=&pageSize=` | `result.data.data` |
+| По ID | `GET` | `/getById/{id}` | **path param** |
+| Создать | `POST` | `/add` | — |
+| Обновить | `PUT` | `/update?id=` | — |
+| Удалить | `DELETE` | `/delete?id=` | — |
+| Активация | `GET` | `/setActive?id=&active=bool` | **метод GET!** |
+| Смена пароля | `POST` | `/changePassword/{id}` | тело: `{ password }` |
+| Прикрепить организацию | `POST` | `/assignOrganization?regionId=&organizationId=` | — |
+| Открепить организацию | `DELETE` | `/removeOrganization?regionId=&organizationId=` | — |
+| Непривязанные организации | `GET` | `/getUnassignedOrganizations` | `result.data.data` |
+| Организации района | `GET` | `/getRegionOrganizations?regionId=` | `result.data.data` |
+
+Поля создания: `{ name, login, password, provinceId, directorName, phoneNumber, location, description, businessSphere, passwordHint }`.
+
+#### PROVINCES (`/api/v1/admin/provinces`) — старый SQL контроллер
+| Действие | Метод | URL | Примечание |
+|---|---|---|---|
+| Список | `GET` | `/getAll?active=` | `result.data` — массив напрямую |
+| По ID | `GET` | `/getById/{id}` | **path param** |
+| Создать | `POST` | `/add` | — |
+| Обновить | `PUT` | `/update?id=` | — |
+| Удалить | `DELETE` | `/delete?id=` | нельзя если есть районы |
+| Активация | `GET` | `/setActive?id=&active=bool` | **метод GET!** |
+| Смена пароля | `POST` | `/changePassword/{id}` | тело: `{ password }` |
+| Excel | `GET` | `/download?active=` | ответ: `{ url }` |
+
+Поля создания: `{ name, login, password, directorName, phoneNumber, location, description, businessSphere, passwordHint }`.
+
+---
+
+### 4. Критические правила для фронта
+
+**Правило 1 — Не фильтруй по `active` на страницах управления**  
+Новые записи создаются с `active = false` по умолчанию. Если делаешь `getAll?active=true`, только что созданная запись не появится в списке. На admin-страницах грузи всё без фильтра — суперадмин видит всё.  
+Фильтр `active` нужен только когда director выбирает провинцию/район из выпадающего списка.
+
+**Правило 2 — Проверяй формат ответа в api-doc перед написанием кода**  
+- `provinces/getAll` → `result.data` (массив)  
+- `regions/getAll` → `result.data.data` (внутри объекта)  
+- `monitors/getAll` → `result.data.data`  
+- `organizations/getAll` → `result.data.data`  
+Ошибись здесь — получишь `undefined` вместо массива и компонент упадёт без ошибки.
+
+**Правило 3 — setActive: разные методы у разных контроллеров**  
+- Provinces/Regions: `GET /setActive?id=&active=`  
+- Monitors: `POST /setActive/{id}?active=`  
+- Organizations: `PUT /setActive?id=` + тело `{ active: bool }`
+
+**Правило 4 — getById: разные параметры**  
+- Organizations/Categories: `GET /getById?id=` (query param)  
+- Provinces/Regions/Monitors: `GET /getById/{id}` (path param)
+
+**Правило 5 — Пароль организации**  
+При создании организации (`POST /organizations/create`) пароль не передаётся в запросе — он генерируется автоматически и возвращается в ответе `{ organizationId, password, message }`. Этот пароль нужно показать администратору (скопировать), потому что больше его увидеть нельзя.
+
+**Правило 6 — Upload фото**  
+Сначала загружай файл через `POST /systemC/upload` (multipart), получай `{ url }`, потом этот url передавай в основной запрос. Не пытайся загрузить файл и создать запись за один запрос.
+
+---
+
 ## 📝 ИСТОРИЯ РАБОТЫ
 
 ### Сессия 2026-05-16 (ЭТАП 2 ЗАВЕРШЕН!)

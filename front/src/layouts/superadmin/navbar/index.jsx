@@ -91,6 +91,15 @@ const Navbar = (props) => {
 
         {/* Right Section */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* BURGER TOGGLE */}
+          <button
+            onClick={onOpenSidenav}
+            className="rounded-lg p-1.5 text-gray-600 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+            aria-label="Toggle sidebar"
+          >
+            <FiAlignJustify className="h-5 w-5" />
+          </button>
+
           {/* DARK MODE TOGGLE */}
           <button
             className="rounded-full bg-gray-200 p-2 text-gray-700 transition-all duration-200 hover:scale-105 hover:bg-gray-300 dark:bg-gray-700 dark:text-yellow-400 dark:hover:bg-gray-600 sm:p-2.5"

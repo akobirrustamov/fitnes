@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ApiCall from "../../../config";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { Modal } from "react-responsive-modal";
@@ -6,8 +7,12 @@ import "react-responsive-modal/styles.css";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function TariffsPage() {
+export default function CategoriesPage() {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showHallModal, setShowHallModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
@@ -25,7 +30,15 @@ export default function TariffsPage() {
 
   useEffect(() => {
     fetchCategories();
+    fetchOrganizations();
   }, []);
+
+  const fetchOrganizations = async () => {
+    const result = await ApiCall("/api/v1/admin/organizations/getAll", "GET", null, { page: 1, limit: 500 });
+    if (!result?.error) {
+      setOrganizations(result.data?.data || result.data?.content || result.data || []);
+    }
+  };
 
   const fetchCategories = async () => {
     const result = await ApiCall("/api/v1/admin/categories/getAll", "GET");
@@ -96,20 +109,33 @@ export default function TariffsPage() {
     if (!result?.error) {
       await fetchCategories();
       closeModal();
-      toast.success(editId ? "Tarif yangilandi." : "Yangi tarif yaratildi.");
+      toast.success(editId ? "Mahsulot turi yangilandi." : "Yangi mahsulot turi yaratildi.");
     } else {
-      toast.error("Xatolik yuz berdi. Ma'lumotlarni tekshiring.");
+      toast.error(result?.data?.message || "Xatolik yuz berdi. Ma'lumotlarni tekshiring.");
     }
   };
 
+  const handleCategoryClick = (category) => {
+    setSelectedCategory(category);
+    setShowHallModal(true);
+  };
+
+  const handleHallSelect = (org) => {
+    setShowHallModal(false);
+    navigate(
+      `/superadmin/market?organizationId=${org.id}&categoryId=${selectedCategory.id}` +
+      `&categoryName=${encodeURIComponent(selectedCategory.nameUz || "")}&orgName=${encodeURIComponent(org.name || "")}`
+    );
+  };
+
   const handleDelete = async (id) => {
-    if (!window.confirm("Ushbu tarifni o'chirishni xohlaysizmi?")) return;
+    if (!window.confirm("Ushbu mahsulot turini o'chirishni xohlaysizmi?")) return;
     const result = await ApiCall(`/api/v1/admin/categories/delete?id=${id}`, "DELETE");
     if (!result?.error) {
       await fetchCategories();
-      toast.success("Tarif o'chirildi.");
+      toast.success("Mahsulot turi o'chirildi.");
     } else {
-      toast.error("Tarifni o'chirishda xatolik yuz berdi.");
+      toast.error(result?.data?.message || "O'chirishda xatolik yuz berdi.");
     }
   };
 
@@ -119,20 +145,22 @@ export default function TariffsPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Tariflar</h1>
-              <p className="mt-1 text-sm text-slate-600">Tariflar va xizmat kategoriya sifatida boshqariladi.</p>
+              <h1 className="text-2xl font-semibold text-slate-900">Mahsulot turlari</h1>
+              <p className="mt-1 text-sm text-slate-600">
+                Mahsulot turlarini ko'rish va boshqarish (ichimliklar, protein qo'shimchalari va boshqalar).
+              </p>
             </div>
             <button
               onClick={openCreateModal}
               className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
             >
-              <Plus size={16} /> Yangi tarif
+              <Plus size={16} /> Yangi tur qo'shish
             </button>
           </div>
 
           <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 font-semibold text-slate-900">
-              Tariflar ro'yxati
+              Mahsulot turlari ro'yxati
             </div>
             <div className="overflow-x-auto px-6 py-4">
               <table className="min-w-full text-left text-sm text-slate-600">
@@ -149,14 +177,21 @@ export default function TariffsPage() {
                   {categoriesList.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="py-8 text-center text-slate-500">
-                        Tariflar topilmadi.
+                        Mahsulot turlari topilmadi.
                       </td>
                     </tr>
                   ) : (
                     categoriesList.map((category) => (
                       <tr key={category.id} className="border-t border-slate-200">
                         <td className="py-3">{category.id}</td>
-                        <td className="py-3">{category.nameUz}</td>
+                        <td className="py-3">
+                          <button
+                            onClick={() => handleCategoryClick(category)}
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            {category.nameUz || "—"}
+                          </button>
+                        </td>
                         <td className="py-3">{category.nameRu}</td>
                         <td className="py-3">{category.displayOrder ?? "—"}</td>
                         <td className="py-3 text-right">
@@ -186,7 +221,7 @@ export default function TariffsPage() {
       <Modal open={showModal} onClose={closeModal} center>
         <div className="w-[460px] max-w-full p-6">
           <div className="mb-4 text-lg font-semibold text-slate-900">
-            {editId ? "Tarifni tahrirlash" : "Yangi tarif qo'shish"}
+            {editId ? "Mahsulot turini tahrirlash" : "Yangi mahsulot turi qo'shish"}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -272,6 +307,32 @@ export default function TariffsPage() {
           </form>
         </div>
       </Modal>
+      <Modal open={showHallModal} onClose={() => setShowHallModal(false)} center>
+        <div className="w-[420px] max-w-full p-6">
+          <div className="mb-4 text-lg font-semibold text-slate-900">
+            Zalni tanlang — <span className="text-blue-600">{selectedCategory?.nameUz}</span>
+          </div>
+          <div className="max-h-80 space-y-2 overflow-y-auto">
+            {organizations.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-500">Zallar topilmadi.</p>
+            ) : (
+              organizations.map((org) => (
+                <button
+                  key={org.id}
+                  onClick={() => handleHallSelect(org)}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-left text-sm transition hover:bg-slate-50"
+                >
+                  <div className="font-medium text-slate-900">{org.name}</div>
+                  {org.phoneNumber && (
+                    <div className="mt-0.5 text-xs text-slate-500">{org.phoneNumber}</div>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </Modal>
+
       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
