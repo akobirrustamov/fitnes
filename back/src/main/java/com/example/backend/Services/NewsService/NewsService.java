@@ -1,5 +1,7 @@
 package com.example.backend.Services.NewsService;
 
+import com.example.backend.Payload.req.NewsCreateRequest;
+import com.example.backend.Payload.req.NewsUpdateRequest;
 import org.springframework.http.HttpEntity;
 
 public interface NewsService {
@@ -12,5 +14,11 @@ public interface NewsService {
     HttpEntity<?> markAllAsRead(Integer orgId);
 
     HttpEntity<?> getUnreadCount(Integer orgId);
+
+    HttpEntity<?> create(NewsCreateRequest request);
+
+    HttpEntity<?> update(Long id, NewsUpdateRequest request);
+
+    HttpEntity<?> delete(Long id);
 }
 

@@ -75,5 +75,27 @@ public interface NewsOrganizationRepo extends JpaRepository<NewsOrganization, Lo
 
     @Query("select count(no) from NewsOrganization no join no.news n where no.organizationId = :orgId and no.isRead = false and n.active = true and (n.endTime is null or n.endTime > current_timestamp)")
     long countUnread(@Param("orgId") Integer orgId);
+
+    @Query(value = """
+            SELECT
+                n.id AS newsId,
+                n.title AS title,
+                n.description AS description,
+                n.content AS content,
+                n.photo_url AS photoUrl,
+                n.url AS url,
+                n.start_time AS startTime,
+                n.end_time AS endTime,
+                n.active AS isRead,
+                n.created_at AS createdTime
+            FROM news n
+            ORDER BY n.created_at DESC
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM news n
+            """,
+            nativeQuery = true)
+    Page<NewsListItemProjection> findAllNewsForAdmin(Pageable pageable);
 }
 
