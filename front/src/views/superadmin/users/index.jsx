@@ -24,6 +24,10 @@ const Dashboard = () => {
     roleIds: [], // array of role IDs (numbers)
   });
 
+  const safeArray = (value) => (Array.isArray(value) ? value : []);
+  const usersList = safeArray(users);
+  const rolesList = safeArray(roles);
+
   // Fetch users and roles on mount
   useEffect(() => {
     getUsers();
@@ -34,7 +38,7 @@ const Dashboard = () => {
   const getUsers = async () => {
     try {
       const result = await ApiCall("/api/v1/admin/users", "GET");
-      setUsers(result.data);
+      setUsers(Array.isArray(result.data) ? result.data : []);
     } catch (error) {
       console.error("Foydalanuvchilarni olishda xatolik", error);
     }
@@ -43,7 +47,7 @@ const Dashboard = () => {
   const getRoles = async () => {
     try {
       const result = await ApiCall("/api/v1/roles", "GET");
-      setRoles(result.data);
+      setRoles(Array.isArray(result.data) ? result.data : []);
     } catch (error) {
       console.error("Rolllarni olishda xatolik", error);
     }
@@ -138,7 +142,7 @@ const Dashboard = () => {
       affiliation: user.affiliation || "",
       country: user.country || "",
       bio: user.bio || "",
-      roleIds: user.roles?.map((role) => role.id) || [],
+      roleIds: Array.isArray(user.roles) ? user.roles.map((role) => role.id) : [],
     });
     setIsEditing(true);
     setShowModal(true);
@@ -224,7 +228,7 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {users?.length === 0 ? (
+              {usersList.length === 0 ? (
                 <tr>
                   <td
                     colSpan="7"
@@ -235,7 +239,7 @@ const Dashboard = () => {
                   </td>
                 </tr>
               ) : (
-                users?.map((user, idx) => (
+                usersList.map((user, idx) => (
                   <tr key={user.id} className="transition hover:bg-gray-50">
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {idx + 1}
@@ -253,7 +257,7 @@ const Dashboard = () => {
                       {user.affiliation || "-"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                      {user.roles?.map((r) => r.name).join(", ") ||
+                      {(Array.isArray(user.roles) ? user.roles.map((r) => r.name).join(", ") : "") ||
                         "Rollar mavjud emas"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
@@ -455,7 +459,7 @@ const Dashboard = () => {
                 Rolni belgilash
               </label>
               <div className="flex flex-wrap gap-4">
-                {roles.map((role) => (
+                {rolesList.map((role) => (
                   <label key={role.id} className="inline-flex items-center">
                     <input
                       type="checkbox"

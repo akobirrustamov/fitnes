@@ -5,11 +5,9 @@ import StudentLayout from "layouts/student";
 import Login from "./views/student/login/Login";
 import LoginAdmin from "./config/login/Login";
 import SuperAdminLayout from "layouts/superadmin";
-import RektorLayout from "layouts/rektor";
-import IlmiyBolimLayout from "layouts/ilmiy-bolim";
-import IlmiyRahbarLayout from "layouts/ilmiy-rahbar";
-import IlmiyTexnikLayout from "layouts/ilmiy-rahbar";
-import BugalterLayout from "layouts/bugalter";
+import MonitorLayout from "layouts/monitor";
+import RegionLayout from "layouts/region";
+import ProvinceLayout from "layouts/province";
 import Home from "./views/home/Home";
 
 import ErrorPage from "./404/404";
@@ -21,12 +19,10 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="superadmin/*" element={<SuperAdminLayout />} />
-        <Route path="rektor/*" element={<RektorLayout />} />
         <Route path="admin/*" element={<AdminLayout />} />
-        <Route path="bugalter/*" element={<BugalterLayout />} />
-        <Route path="ilmiy-bolim/*" element={<IlmiyBolimLayout />} />
-        <Route path="ilmiy-rahbar/*" element={<IlmiyRahbarLayout />} />
-        <Route path="ilmiy-texnik/*" element={<IlmiyTexnikLayout />} />
+        <Route path="monitor/*" element={<MonitorLayout />} />
+        <Route path="region/*" element={<RegionLayout />} />
+        <Route path="province/*" element={<ProvinceLayout />} />
         <Route path="student/*" element={<StudentLayout />} />
 
         <Route path="admin/login" element={<LoginAdmin />} />

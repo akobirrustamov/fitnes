@@ -1,7 +1,7 @@
-import { Link, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ApiCall from "../index";
 
 export default function Auth() {
@@ -12,64 +12,78 @@ export default function Auth() {
     rememberMe: false,
   });
 
-  // 🔥 Avtomatik tekshirish ( agar token mavjud bo‘lsa)
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    const roles = JSON.parse(localStorage.getItem("roles") || "[]");
-  }, [navigate]);
-  const changeRole = async (userId, roleId) => {
-    try {
-      const response = await ApiCall(`/api/v1/auth/change-role/${roleId}`, "PUT", null);
-    } catch (error) {
-      navigate("/admin/login");
-
-      console.error("Error fetching account data:", error);
-    }
+  const rolePathMap = {
+    ROLE_SUPERADMIN: "/superadmin/default",
+    SUPERADMIN: "/superadmin/default",
+    ROLE_ADMIN: "/admin/default",
+    ADMIN: "/admin/default",
+    ROLE_USER: "/user/default",
+    USER: "/user/default",
+    ROLE_MONITOR: "/monitor/default",
+    MONITOR: "/monitor/default",
+    ROLE_REGION: "/region/default",
+    REGION: "/region/default",
+    ROLE_PROVINCE: "/province/default",
+    PROVINCE: "/province/default",
   };
 
+  const normalizeRoleName = (roleName) => {
+    return roleName
+      ? roleName
+          .toString()
+          .trim()
+          .replace(/\s+/g, "_")
+          .replace(/-/g, "_")
+          .toUpperCase()
+      : "";
+  };
 
   const handleStudentChange = (e) => {
     const { name, value } = e.target;
     setStudentData({ ...studentData, [name]: value });
   };
+
   const handleAdminSubmit = async (e) => {
     e.preventDefault();
     localStorage.clear();
-    try {
-      const response = await toast.promise(
-        ApiCall("/api/v1/auth/login", "POST", studentData, null, false),
-        {
-          pending: "Login...",
-          error: "Failed to login",
-        }
-      );
 
-      if (response.data?.access_token) {
-        localStorage.setItem("access_token", response.data.access_token);
-        if (response.data?.refresh_token) {
-          localStorage.setItem("refresh_token", response.data.refresh_token);
+    try {
+      const response = await ApiCall(
+        "/api/v1/auth/login",
+        "POST",
+        studentData,
+        null,
+        false
+      );
+      console.log(response.data);
+      
+      if (response.error || !response.data) {
+        toast.error("Login yoki parol xato");
+        return;
+      }
+
+      const loginData = response.data;
+      if (loginData.accessToken) {
+        localStorage.setItem("access_token", loginData.accessToken);
+        if (loginData.refreshToken) {
+          localStorage.setItem("refresh_token", loginData.refreshToken);
         }
       }
 
-      const roles = response.data.roles || [];
+      const activeRoleName = normalizeRoleName(
+        loginData.roleName || loginData.role || loginData.role?.name || ""
+      );
+      if (!activeRoleName) {
+        toast.error("Sizga rol berilmagan yoki rol topilmadi.");
+        return;
+      }
 
-      if (roles.length > 0) {
-        let active_role = null;
-        if (response.data?.activeRole == null) {
-          active_role = roles[0]?.name;
-          await changeRole(response.data?.access_token, roles[0]?.id);
-        } else {
-          active_role = response.data?.activeRole.name;
-        }
+      const redirectPath = rolePathMap[activeRoleName];
+      localStorage.setItem("roles", JSON.stringify([activeRoleName]));
+      localStorage.setItem("activeRole", JSON.stringify({ name: activeRoleName }));
 
-        // FitCRM роли
-        if (active_role === "ROLE_SUPERADMIN" || active_role === "super_admin") {
-          navigate("/superadmin/default");
-        } else if (active_role === "ROLE_DIRECTOR" || active_role === "director") {
-          navigate("/director/default");
-        } else {
-          toast.error("Noma'lum rol yoki kirish huquqi yo'q!");
-        }
+      if (redirectPath) {
+        navigate(redirectPath);
       } else {
         toast.error("Noma'lum rol yoki kirish huquqi yo'q!");
       }

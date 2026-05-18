@@ -1,11 +1,11 @@
 import axios from "axios";
 export let baseUrl;
 baseUrl = "http://localhost:8080";
-// baseUrl = "https://ilmiy.bxu.uz";
 // baseUrl = "";
 
 export default function (url, method, data, param) {
   let token = localStorage.getItem("access_token");
+  const authHeader = token ? `Bearer ${token}` : undefined;
   // const navigate = useNavigate()
   // console.log(param)
   return axios({
@@ -13,7 +13,7 @@ export default function (url, method, data, param) {
     method: method,
     data: data,
     headers: {
-      Authorization: token,
+      Authorization: authHeader,
     },
     params: param,
   })

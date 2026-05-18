@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, matchPath } from "react-router-dom";
 import { HiX, HiLogout } from "react-icons/hi";
 import { MdSchool } from "react-icons/md";
-import routes from "../../../routes/student";
+import routes from "../../../routes/users";
 
 const Sidebar = ({ open, onClose }) => {
   const location = useLocation();

@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./navbar";
 import Sidebar from "./sidebar";
-import routes from "../../routes/student";
+import routes from "../../routes/users";
 
 export default function StudentLayout(props) {
   const { ...rest } = props;

@@ -119,7 +119,7 @@ const ProfileOverview = () => {
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Holat</span>
-                <span className="text-emerald-600 bg-emerald-50 flex items-center gap-1 rounded-md px-2 py-1 text-xs">
+                <span className="text-green-600 bg-green-50 flex items-center gap-1 rounded-md px-2 py-1 text-xs">
                   <MdCheckCircle className="h-3 w-3" />
                   Faol
                 </span>
@@ -223,7 +223,7 @@ const ProfileOverview = () => {
                       <span
                         className={`h-1 w-1 rounded-full ${
                           password.length >= 8
-                            ? "bg-emerald-400"
+                            ? "bg-green-400"
                             : "bg-gray-300"
                         }`}
                       ></span>
@@ -233,7 +233,7 @@ const ProfileOverview = () => {
                       <span
                         className={`h-1 w-1 rounded-full ${
                           /[A-Z]/.test(password)
-                            ? "bg-emerald-400"
+                            ? "bg-green-400"
                             : "bg-gray-300"
                         }`}
                       ></span>
@@ -243,7 +243,7 @@ const ProfileOverview = () => {
                       <span
                         className={`h-1 w-1 rounded-full ${
                           /[0-9]/.test(password)
-                            ? "bg-emerald-400"
+                            ? "bg-green-400"
                             : "bg-gray-300"
                         }`}
                       ></span>
@@ -261,8 +261,8 @@ const ProfileOverview = () => {
 
                 {/* Success Message */}
                 {successMessage && (
-                  <div className="bg-emerald-50 border-emerald-100 rounded-lg border p-3">
-                    <p className="text-emerald-600 flex items-center gap-1 text-xs">
+                  <div className="bg-green-50 border-green-100 rounded-lg border p-3">
+                    <p className="text-green-600 flex items-center gap-1 text-xs">
                       <MdCheckCircle className="h-3 w-3" />
                       {successMessage}
                     </p>

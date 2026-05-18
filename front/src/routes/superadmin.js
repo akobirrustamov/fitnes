@@ -1,24 +1,28 @@
-import MainDashboardSuper from "views/superadmin/default";
-import DashboardSuper from "views/superadmin/dashboard";
+import MainDashboardSuper from "views/superadmin/home";
 import SuperAdminProfile from "views/superadmin/profile";
-import Provinces from "views/superadmin/provinces";
-import Regions from "views/superadmin/regions";
-import Monitors from "views/superadmin/monitors";
-import Categories from "views/superadmin/categories";
-import Organizations from "views/superadmin/organizations";
+import SuperAdminUsers from "views/superadmin/users";
+import SuperAdminProvinces from "views/superadmin/provinces";
+import SuperAdminRegions from "views/superadmin/regions";
+import SuperAdminOrganizations from "views/superadmin/organizations";
+import SuperAdminTariffs from "views/superadmin/tariffs";
+import SuperAdminSettings from "views/superadmin/settings";
+import SuperAdminServers from "views/superadmin/servers";
+import SuperAdminNews from "views/superadmin/news";
+import SuperAdminFeedback from "views/superadmin/feedback";
+import SuperAdminMessages from "views/superadmin/messages";
 
 import {
   MdHome,
   MdPerson,
-  MdBusiness,
-  MdLocationOn,
+  MdGroup,
+  MdPublic,
   MdMap,
-  MdMonitor,
+  MdBusiness,
   MdCategory,
   MdSettings,
-  MdAttachMoney,
+  MdDns,
   MdNewspaper,
-  MdFeedback,
+  MdForum,
   MdMessage,
 } from "react-icons/md";
 
@@ -28,77 +32,77 @@ const routes = [
     layout: "/superadmin",
     path: "default",
     icon: <MdHome className="h-6 w-6" />,
-    component: <DashboardSuper />,
+    component: <MainDashboardSuper />,
+  },
+  {
+    name: "Foydalanuvchilar",
+    layout: "/superadmin",
+    path: "users",
+    icon: <MdGroup className="h-6 w-6" />,
+    component: <SuperAdminUsers />,
   },
   {
     name: "Viloyatlar",
     layout: "/superadmin",
     path: "provinces",
-    icon: <MdMap className="h-6 w-6" />,
-    component: <Provinces />,
+    icon: <MdPublic className="h-6 w-6" />,
+    component: <SuperAdminProvinces />,
   },
   {
     name: "Tumanlar",
     layout: "/superadmin",
     path: "regions",
-    icon: <MdLocationOn className="h-6 w-6" />,
-    component: <Regions />,
-  },
-  {
-    name: "Monitorlar",
-    layout: "/superadmin",
-    path: "monitors",
-    icon: <MdMonitor className="h-6 w-6" />,
-    component: <Monitors />,
-  },
-  {
-    name: "Kategoriyalar",
-    layout: "/superadmin",
-    path: "categories",
-    icon: <MdCategory className="h-6 w-6" />,
-    component: <Categories />,
+    icon: <MdMap className="h-6 w-6" />,
+    component: <SuperAdminRegions />,
   },
   {
     name: "Zallar",
     layout: "/superadmin",
     path: "organizations",
     icon: <MdBusiness className="h-6 w-6" />,
-    component: <Organizations />,
-  },
-  {
-    name: "Sozlamalar",
-    layout: "/superadmin",
-    path: "settings",
-    icon: <MdSettings className="h-6 w-6" />,
-    component: <MainDashboardSuper />, // TODO: создать компонент
+    component: <SuperAdminOrganizations />,
   },
   {
     name: "Tariflar",
     layout: "/superadmin",
     path: "tariffs",
-    icon: <MdAttachMoney className="h-6 w-6" />,
-    component: <MainDashboardSuper />, // TODO: создать компонент
+    icon: <MdCategory className="h-6 w-6" />,
+    component: <SuperAdminTariffs />,
+  },
+  {
+    name: "Serverlar",
+    layout: "/superadmin",
+    path: "servers",
+    icon: <MdDns className="h-6 w-6" />,
+    component: <SuperAdminServers />,
   },
   {
     name: "Yangiliklar",
     layout: "/superadmin",
     path: "news",
     icon: <MdNewspaper className="h-6 w-6" />,
-    component: <MainDashboardSuper />, // TODO: создать компонент
+    component: <SuperAdminNews />,
   },
   {
     name: "Murojaatlar",
     layout: "/superadmin",
-    path: "feedbacks",
-    icon: <MdFeedback className="h-6 w-6" />,
-    component: <MainDashboardSuper />, // TODO: создать компонент
+    path: "feedback",
+    icon: <MdForum className="h-6 w-6" />,
+    component: <SuperAdminFeedback />,
   },
   {
     name: "Xabarlar",
     layout: "/superadmin",
     path: "messages",
     icon: <MdMessage className="h-6 w-6" />,
-    component: <MainDashboardSuper />, // TODO: создать компонент
+    component: <SuperAdminMessages />,
+  },
+  {
+    name: "Sozlamalar",
+    layout: "/superadmin",
+    path: "settings",
+    icon: <MdSettings className="h-6 w-6" />,
+    component: <SuperAdminSettings />,
   },
   {
     name: "Profil",
