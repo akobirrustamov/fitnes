@@ -1,9 +1,12 @@
 package com.example.backend.Services.NewsService;
 
 import com.example.backend.Entity.NewsOrganization;
+import com.example.backend.Payload.req.NewsCreateRequest;
+import com.example.backend.Payload.req.NewsUpdateRequest;
 import com.example.backend.Projection.NewsDetailProjection;
 import com.example.backend.Projection.NewsListItemProjection;
 import com.example.backend.Repository.NewsOrganizationRepo;
+import com.example.backend.Repository.NewsRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,14 +27,23 @@ import java.util.Map;
 public class NewsServiceImpl implements NewsService {
 
     private final NewsOrganizationRepo newsOrganizationRepo;
-
+    private final NewsRepo newsRepo;
     @Override
     public HttpEntity<?> getAll(Integer orgId, int page, int pageSize, Boolean isRead) {
         int safePage = Math.max(1, page);
         int safePageSize = Math.min(500, Math.max(1, pageSize));
         PageRequest pageable = PageRequest.of(safePage - 1, safePageSize);
 
-        Page<NewsListItemProjection> pageResult = newsOrganizationRepo.findNewsForOrganization(orgId, isRead, pageable);
+        Page<NewsListItemProjection> pageResult;
+        
+        // Admin uchun (orgId = null) barcha yangiliklar
+        if (orgId == null) {
+            pageResult = newsOrganizationRepo.findAllNewsForAdmin(pageable);
+        } else {
+            // Tashkilot uchun filtrlangan yangiliklar
+            pageResult = newsOrganizationRepo.findNewsForOrganization(orgId, isRead, pageable);
+        }
+        
         List<Map<String, Object>> items = pageResult.getContent().stream().map(this::toListMap).toList();
 
         return ResponseEntity.ok(Map.of(
@@ -76,6 +88,80 @@ public class NewsServiceImpl implements NewsService {
     public HttpEntity<?> getUnreadCount(Integer orgId) {
         long unread = newsOrganizationRepo.countUnread(orgId);
         return ResponseEntity.ok(Map.of("unreadCount", unread));
+    }
+
+    @Override
+    @Transactional
+    public HttpEntity<?> create(NewsCreateRequest request) {
+
+        Integer result = newsRepo.addNews(
+                request.getTitle(),
+                request.getDescription(),
+                request.getContent(),
+                request.getPhotoUrl(),
+                request.getUrl()
+        );
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "newsId", result
+                )
+        );
+    }
+
+    @Override
+    @Transactional
+    public HttpEntity<?> update(Long id, NewsUpdateRequest request) {
+
+        Integer result = newsRepo.updateNews(
+                id,
+                request.getTitle(),
+                request.getDescription(),
+                request.getContent(),
+                request.getPhotoUrl(),
+                request.getUrl()
+        );
+
+        if (result == -1) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "News topilmadi"));
+        }
+
+        if (result == -2) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Faol newsni yangilab bo'lmaydi"));
+        }
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "Yangilandi"
+                )
+        );
+    }
+    @Override
+    @Transactional
+    public HttpEntity<?> delete(Long id) {
+
+        Integer result = newsRepo.deleteNews(id);
+
+        if (result == -1) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "News topilmadi"));
+        }
+
+        if (result == -2) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Faol newsni o'chirib bo'lmaydi"));
+        }
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "O'chirildi"
+                )
+        );
     }
 
     private Map<String, Object> toListMap(NewsListItemProjection item) {

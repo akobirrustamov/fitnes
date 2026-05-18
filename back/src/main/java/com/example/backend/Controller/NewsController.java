@@ -1,5 +1,7 @@
 package com.example.backend.Controller;
 
+import com.example.backend.Payload.req.NewsCreateRequest;
+import com.example.backend.Payload.req.NewsUpdateRequest;
 import com.example.backend.Repository.UserRepo;
 import com.example.backend.Security.JwtService;
 import com.example.backend.Services.NewsService.NewsService;
@@ -42,6 +44,21 @@ public class NewsController {
     private ResponseEntity<?> unauthorized() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("message", "Avtorizatsiya talab qilinadi"));
+    }
+
+    @PostMapping("/create")
+    public HttpEntity<?> create(
+            @RequestBody NewsCreateRequest request
+    ) {
+        return newsService.create(request);
+    }
+
+    @PutMapping("/update")
+    public HttpEntity<?> update(
+            @RequestParam Long newsId,
+            @RequestBody NewsUpdateRequest request
+    ) {
+        return newsService.update(newsId, request);
     }
 
     @GetMapping("/getAll")
