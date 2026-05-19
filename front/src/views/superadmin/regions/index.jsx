@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import ApiCall from "../../../config";
-import { Plus, Edit, Trash2, CheckCircle2, KeyRound } from "lucide-react";
+import axios from "axios";
+import ApiCall, { baseUrl } from "config";
+import { Plus, Edit, Trash2, CheckCircle2, KeyRound, Download } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
 import { toast, ToastContainer } from "react-toastify";
@@ -29,6 +30,8 @@ export default function RegionsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  const [downloading, setDownloading] = useState(false);
+
   const safeArray = (value) => (Array.isArray(value) ? value : []);
   const regionList = safeArray(regions);
   const provincesList = safeArray(provinces);
@@ -38,6 +41,30 @@ export default function RegionsPage() {
     fetchRegions();
     fetchProvinces();
   }, []);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await axios({
+        url: `${baseUrl}/api/v1/admin/regions/download`,
+        method: "GET",
+        responseType: "blob",
+        headers: { Authorization: token ? `Bearer ${token}` : undefined },
+      });
+      const href = URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = "tumanlar.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+    } catch {
+      toast.error("Excel yuklab olishda xatolik");
+    }
+    setDownloading(false);
+  };
 
   const fetchRegions = async () => {
     try {
@@ -231,12 +258,22 @@ export default function RegionsPage() {
                 Tumanlar ro'yxatini ko'rish va qo'shish.
               </p>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="bg-gray-900 hover:bg-gray-700 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition"
-            >
-              <Plus size={16} /> Yangi tuman
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDownload}
+                disabled={downloading}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Download size={16} />
+                {downloading ? "Yuklanmoqda..." : "Excel"}
+              </button>
+              <button
+                onClick={openCreateModal}
+                className="bg-gray-900 hover:bg-gray-700 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition"
+              >
+                <Plus size={16} /> Yangi tuman
+              </button>
+            </div>
           </div>
 
           <div className="mt-6">

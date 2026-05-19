@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
-import ApiCall from "../../../config";
-import { Plus, Edit, Trash2, Eye, Link, Unlink, ToggleLeft, ToggleRight, KeyRound } from "lucide-react";
+import axios from "axios";
+import ApiCall, { baseUrl } from "config";
+import { Plus, Edit, Trash2, Eye, Link, Unlink, ToggleLeft, ToggleRight, KeyRound, Download } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function ServersPage() {
   const [monitors, setMonitors] = useState([]);
@@ -17,7 +20,7 @@ export default function ServersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [form, setForm] = useState({ name: "", login: "", password: "", phoneNumber: "", description: "", passwordHint: "" });
   const [editId, setEditId] = useState(null);
-  const [message, setMessage] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   const safeArray = (v) => (Array.isArray(v) ? v : []);
 
@@ -45,10 +48,33 @@ export default function ServersPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await axios({
+        url: `${baseUrl}/api/v1/admin/monitors/download`,
+        method: "GET",
+        responseType: "blob",
+        headers: { Authorization: token ? `Bearer ${token}` : undefined },
+      });
+      const href = URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = "serverlar.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+    } catch {
+      toast.error("Excel yuklab olishda xatolik");
+    }
+    setDownloading(false);
+  };
+
   const resetForm = () => {
     setForm({ name: "", login: "", password: "", phoneNumber: "", description: "", passwordHint: "" });
     setEditId(null);
-    setMessage("");
   };
 
   const openCreateModal = () => {
@@ -66,7 +92,6 @@ export default function ServersPage() {
       description: monitor.description || "",
       passwordHint: monitor.passwordHint || "",
     });
-    setMessage("");
     setShowModal(true);
   };
 
@@ -126,9 +151,9 @@ export default function ServersPage() {
     if (!result?.error) {
       await fetchMonitors();
       closeModal();
-      setMessage(editId ? "Server yangilandi." : "Yangi server yaratildi.");
+      toast.success(editId ? "Server yangilandi." : "Yangi server yaratildi.");
     } else {
-      setMessage("Xatolik yuz berdi.");
+      toast.error("Xatolik yuz berdi.");
     }
   };
 
@@ -137,7 +162,7 @@ export default function ServersPage() {
     const result = await ApiCall(`/api/v1/admin/monitors/delete?id=${id}`, "DELETE");
     if (!result?.error) {
       await fetchMonitors();
-      setMessage("Server o'chirildi.");
+      toast.success("Server o'chirildi.");
     }
   };
 
@@ -156,9 +181,9 @@ export default function ServersPage() {
     const result = await ApiCall(`/api/v1/admin/monitors/changePassword/${selectedMonitor.id}`, "POST", { password: newPassword });
     if (!result?.error) {
       closePasswordModal();
-      setMessage("Parol muvaffaqiyatli o'zgartirildi.");
+      toast.success("Parol muvaffaqiyatli o'zgartirildi.");
     } else {
-      setMessage("Parolni o'zgartirishda xatolik.");
+      toast.error("Parolni o'zgartirishda xatolik.");
     }
   };
 
@@ -193,17 +218,23 @@ export default function ServersPage() {
               <h1 className="text-2xl font-semibold text-slate-900">Serverlar</h1>
               <p className="mt-1 text-sm text-slate-600">Monitor serverlarini boshqarish.</p>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 hover:bg-gray-700 px-4 py-2 text-sm font-medium text-white transition"
-            >
-              <Plus size={16} /> Yangi server
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDownload}
+                disabled={downloading}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Download size={16} />
+                {downloading ? "Yuklanmoqda..." : "Excel"}
+              </button>
+              <button
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 hover:bg-gray-700 px-4 py-2 text-sm font-medium text-white transition"
+              >
+                <Plus size={16} /> Yangi server
+              </button>
+            </div>
           </div>
-
-          {message && (
-            <div className="mt-4 rounded-xl bg-green-50 p-4 text-sm text-green-700">{message}</div>
-          )}
 
           <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 font-semibold text-slate-900">
@@ -561,6 +592,8 @@ export default function ServersPage() {
           </div>
         </div>
       </Modal>
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 }

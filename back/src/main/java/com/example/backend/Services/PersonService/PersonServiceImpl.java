@@ -363,10 +363,16 @@ public class PersonServiceImpl implements PersonService {
 
     private void createPersonTask(Integer orgId, Long personId, String action) {
         try {
+            // Use a savepoint so that if the function doesn't exist, the outer
+            // @Transactional transaction stays valid (PostgreSQL aborts the whole
+            // transaction on any SQL error — savepoint lets us roll back partially).
+            jdbc.execute("SAVEPOINT sp_person_task");
             jdbc.update("SELECT create_person_tasks(?, ?, ?)", orgId, personId, action);
+            jdbc.execute("RELEASE SAVEPOINT sp_person_task");
         } catch (Exception e) {
             log.warn("create_person_tasks ishlamadi (orgId={}, personId={}, action={}): {}",
                     orgId, personId, action, e.getMessage());
+            try { jdbc.execute("ROLLBACK TO SAVEPOINT sp_person_task"); } catch (Exception ignored) {}
         }
     }
 

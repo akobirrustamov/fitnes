@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * DashboardController – tashkilot (director) dashboard endpointlari.
@@ -38,8 +39,8 @@ public class DashboardController {
         if (header == null || !header.startsWith("Bearer ")) return null;
         String token = header.substring(7);
         try {
-            String phone = jwtService.extractSubjectFromJwt(token);
-            return userRepo.findByPhone(phone)
+            String userId = jwtService.extractSubjectFromJwt(token);
+            return userRepo.findById(UUID.fromString(userId))
                     .map(com.example.backend.Entity.User::getNumber)
                     .orElse(null);
         } catch (Exception e) {

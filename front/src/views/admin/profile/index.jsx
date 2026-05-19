@@ -1,20 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import ApiCall from "../../../config";
 import {
   MdPerson,
   MdLock,
   MdVisibility,
   MdVisibilityOff,
-  MdEmail,
-  MdBadge,
   MdCheckCircle,
 } from "react-icons/md";
-import Card from "components/card";
 
 const ProfileOverview = () => {
-  const navigate = useNavigate();
-
   const [admin, setAdmin] = useState(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -29,12 +23,9 @@ const ProfileOverview = () => {
   }, []);
 
   const getAdmin = async () => {
-    try {
-      const response = await ApiCall("/api/v1/auth/decode", "GET", null);
+    const response = await ApiCall("/api/v1/profile/view", "GET");
+    if (!response?.error) {
       setAdmin(response.data);
-    } catch (error) {
-      navigate("/admin/login");
-      console.error("Error fetching account data:", error);
     }
   };
 
@@ -69,8 +60,8 @@ const ProfileOverview = () => {
 
     try {
       const response = await ApiCall(
-        `/api/v1/auth/password/${admin.id}`,
-        "PUT",
+        "/api/v1/profile/changePassword",
+        "POST",
         { password }
       );
 

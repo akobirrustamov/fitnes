@@ -3,80 +3,62 @@ export let baseUrl;
 baseUrl = "http://localhost:8080";
 // baseUrl = "";
 
-export default function (url, method, data, param) {
+// Shared refresh promise — prevents concurrent refresh races when Promise.all
+// triggers multiple simultaneous 401s with the same refresh token.
+let refreshPromise = null;
+
+export default function ApiCall(url, method, data, param) {
   let token = localStorage.getItem("access_token");
   const authHeader = token ? `Bearer ${token}` : undefined;
-  // const navigate = useNavigate()
-  // console.log(param)
   return axios({
     url: baseUrl + url,
     method: method,
     data: data,
-    headers: {
-      Authorization: authHeader,
-    },
+    headers: { Authorization: authHeader },
     params: param,
   })
     .then((res) => {
-      if (res.data) {
-        // console.log(res.data)
-        return {
-          error: false,
-          data: res.data,
-        };
-      }
+      return { error: false, data: res.data };
     })
     .catch((err) => {
-      if (err.response.status === 401) {
-        if (localStorage.getItem("refresh_token") === null) {
-          return {
-            error: true,
-            data: err.response.status,
-          };
+      const status = err.response?.status;
+      if (status === 401) {
+        const refreshToken = localStorage.getItem("refresh_token");
+        if (!refreshToken) {
+          return { error: true, data: status };
         }
-        return axios({
-          url:
-            baseUrl +
-            `/api/v1/auth/refresh?refreshToken=${localStorage.getItem(
-              "refresh_token"
-            )}`,
-          method: "POST",
-        })
-          .then((res) => {
-            localStorage.setItem("access_token", res.data);
-            // Returning the inner promise
+        if (!refreshPromise) {
+          refreshPromise = axios({
+            url: baseUrl + `/api/v1/auth/refresh?refreshToken=${refreshToken}`,
+            method: "POST",
+          })
+            .then((res) => {
+              // Refresh endpoint returns {accessToken, refreshToken, expiresIn}
+              const newAccess = res.data?.accessToken ?? res.data;
+              localStorage.setItem("access_token", newAccess);
+              if (res.data?.refreshToken) {
+                localStorage.setItem("refresh_token", res.data.refreshToken);
+              }
+            })
+            .finally(() => {
+              refreshPromise = null;
+            });
+        }
+        return refreshPromise
+          .then(() => {
             return axios({
               url: baseUrl + url,
               method: method,
               data: data,
               headers: {
-                Authorization: localStorage.getItem("access_token"),
+                Authorization: `Bearer ${localStorage.getItem("access_token")}`,
               },
-            })
-              .then((res) => {
-                return {
-                  error: false,
-                  data: res.data,
-                };
-              })
-              .catch((err) => {
-                return {
-                  error: true,
-                  data: err.response.data,
-                };
-              });
+              params: param,
+            });
           })
-          .catch((err) => {
-            return {
-              error: true,
-              data: err.response.data,
-            };
-          });
-      } else {
-        return {
-          error: true,
-          data: err.response.data,
-        };
+          .then((res) => ({ error: false, data: res.data }))
+          .catch((err) => ({ error: true, data: err.response?.data }));
       }
+      return { error: true, data: err.response?.data };
     });
 }

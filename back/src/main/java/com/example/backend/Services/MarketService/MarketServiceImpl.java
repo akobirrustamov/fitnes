@@ -261,6 +261,45 @@ public class MarketServiceImpl implements MarketService {
     }
 
     @Override
+    public HttpEntity<?> getSales(Integer orgId, int page, int limit) {
+        int safePage = Math.max(1, page);
+        int safeLimit = Math.min(200, Math.max(1, limit));
+
+        Page<MarketSale> salesPage = marketSaleRepo.findByOrganizationIdOrderByCreatedTimeDesc(
+                orgId, PageRequest.of(safePage - 1, safeLimit));
+
+        List<Map<String, Object>> data = salesPage.getContent().stream().map(sale -> {
+            List<MarketSaleItem> items = marketSaleItemRepo.findBySaleId(sale.getId());
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", sale.getId());
+            row.put("personId", sale.getPersonId());
+            row.put("totalPrice", sale.getTotalPrice());
+            row.put("paidAmount", sale.getPaidAmount());
+            row.put("debt", sale.getTotalPrice().subtract(sale.getPaidAmount()).max(BigDecimal.ZERO));
+            row.put("createdTime", sale.getCreatedTime() == null ? null : sale.getCreatedTime().toString());
+            row.put("items", items.stream().map(item -> {
+                Map<String, Object> itemRow = new LinkedHashMap<>();
+                itemRow.put("id", item.getId());
+                itemRow.put("productId", item.getProductId());
+                itemRow.put("productName", item.getProductName());
+                itemRow.put("amount", item.getAmount());
+                itemRow.put("price", item.getPrice());
+                return itemRow;
+            }).toList());
+            return row;
+        }).toList();
+
+        return ResponseEntity.ok(Map.of(
+                "data", data,
+                "totalCount", salesPage.getTotalElements(),
+                "page", safePage,
+                "limit", safeLimit,
+                "totalPages", salesPage.getTotalPages()
+        ));
+    }
+
+    @Override
     public HttpEntity<?> getSuggestions(Integer categoryId) {
         List<String> names = categoryId != null
                 ? marketProductRepo.findDistinctNamesByCategoryId(categoryId)

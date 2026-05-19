@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import ApiCall from "../../../config";
-import { Plus, Edit, Trash2, CheckCircle2, KeyRound } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import ApiCall from "config";
+import { Plus, Edit, Trash2, CheckCircle2, KeyRound, Search } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
 import { toast, ToastContainer } from "react-toastify";
@@ -11,6 +11,16 @@ export default function OrganizationsPage() {
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 20;
+
+  const [search, setSearch] = useState("");
+  const [filterActive, setFilterActive] = useState("");
+  const [filterProvinceId, setFilterProvinceId] = useState("");
+  const [filterRegionId, setFilterRegionId] = useState("");
+
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -36,6 +46,9 @@ export default function OrganizationsPage() {
   const regionsList = allRegions.filter(
     (r) => !form.provinceId || String(r.provinceId) === String(form.provinceId)
   );
+  const filterRegionsList = allRegions.filter(
+    (r) => !filterProvinceId || String(r.provinceId) === String(filterProvinceId)
+  );
 
   const getRegionName = (org) => {
     if (org.regionName) return org.regionName;
@@ -53,14 +66,27 @@ export default function OrganizationsPage() {
   };
 
   useEffect(() => {
-    fetchOrganizations();
     fetchProvinces();
     fetchRegions();
   }, []);
 
-  const fetchOrganizations = async () => {
-    const result = await ApiCall("/api/v1/admin/organizations/getAll", "GET", null, { page: 1, limit: 100 });
-    if (!result?.error) setOrganizations(result.data?.data || result.data?.content || result.data || []);
+  useEffect(() => {
+    fetchOrganizations(1);
+  }, [search, filterActive, filterProvinceId, filterRegionId]);
+
+  const fetchOrganizations = async (p) => {
+    const params = { page: p || page, limit };
+    if (search) params.search = search;
+    if (filterActive !== "") params.active = filterActive === "true";
+    if (filterProvinceId) params.provinceId = filterProvinceId;
+    if (filterRegionId) params.regionId = filterRegionId;
+    const result = await ApiCall("/api/v1/admin/organizations/getAll", "GET", null, params);
+    if (!result?.error) {
+      setOrganizations(result.data?.data || result.data?.content || result.data || []);
+      setTotalCount(result.data?.totalCount || 0);
+      setTotalPages(result.data?.totalPages || 1);
+      if (p) setPage(p);
+    }
   };
 
   const fetchProvinces = async () => {
@@ -130,7 +156,7 @@ export default function OrganizationsPage() {
     const result = await ApiCall(apiUrl, method, payload);
     setLoading(false);
     if (!result?.error) {
-      await fetchOrganizations();
+      await fetchOrganizations(page);
       closeModal();
       toast.success(editId ? "Tashkilot yangilandi." : "Yangi tashkilot yaratildi.");
     } else {
@@ -182,7 +208,7 @@ export default function OrganizationsPage() {
     if (!window.confirm("Ushbu tashkilotni o'chirishni xohlaysizmi?")) return;
     const result = await ApiCall(`/api/v1/admin/organizations/delete?id=${id}`, "DELETE");
     if (!result?.error) {
-      await fetchOrganizations();
+      await fetchOrganizations(page);
       toast.success("Tashkilot o'chirildi.");
     } else {
       toast.error(result?.data?.message || "Tashkilotni o'chirishda xatolik yuz berdi.");
@@ -206,9 +232,62 @@ export default function OrganizationsPage() {
             </button>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {/* Search & filter bar */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Qidirish..."
+                className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm text-gray-900 outline-none focus:border-gray-400"
+              />
+            </div>
+            <select
+              value={filterActive}
+              onChange={(e) => setFilterActive(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-gray-400"
+            >
+              <option value="">Barcha holat</option>
+              <option value="true">Faol</option>
+              <option value="false">Bloklangan</option>
+            </select>
+            <select
+              value={filterProvinceId}
+              onChange={(e) => { setFilterProvinceId(e.target.value); setFilterRegionId(""); }}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-gray-400"
+            >
+              <option value="">Barcha viloyat</option>
+              {provincesList.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <select
+              value={filterRegionId}
+              onChange={(e) => setFilterRegionId(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-gray-400"
+              disabled={!filterProvinceId}
+            >
+              <option value="">Barcha tuman</option>
+              {filterRegionsList.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+            {(search || filterActive || filterProvinceId || filterRegionId) && (
+              <button
+                onClick={() => { setSearch(""); setFilterActive(""); setFilterProvinceId(""); setFilterRegionId(""); }}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Tozalash
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 font-semibold text-slate-900">
               Tashkilotlar ro'yxati
+              {totalCount > 0 && <span className="ml-2 text-sm font-normal text-slate-500">({totalCount} ta)</span>}
             </div>
             <div className="overflow-x-auto px-6 py-4">
               <table className="min-w-full text-left text-sm text-slate-600">
@@ -273,6 +352,27 @@ export default function OrganizationsPage() {
               </table>
             </div>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button
+                onClick={() => fetchOrganizations(page - 1)}
+                disabled={page <= 1}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              >
+                Oldingi
+              </button>
+              <span className="text-sm text-gray-600">{page} / {totalPages}</span>
+              <button
+                onClick={() => fetchOrganizations(page + 1)}
+                disabled={page >= totalPages}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              >
+                Keyingi
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

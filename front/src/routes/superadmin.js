@@ -6,6 +6,7 @@ import SuperAdminRegions from "views/superadmin/regions";
 import SuperAdminOrganizations from "views/superadmin/organizations";
 import SuperAdminCategories from "views/superadmin/categories";
 import SuperAdminMarket from "views/superadmin/market";
+import SuperAdminSales from "views/superadmin/sales";
 import SuperAdminSettings from "views/superadmin/settings";
 import SuperAdminServers from "views/superadmin/servers";
 import SuperAdminNews from "views/superadmin/news";
@@ -76,6 +77,13 @@ const routes = [
     path: "market",
     hidden: true,
     component: <SuperAdminMarket />,
+  },
+  {
+    name: "Sotuvlar tarixi",
+    layout: "/superadmin",
+    path: "sales",
+    hidden: true,
+    component: <SuperAdminSales />,
   },
   {
     name: "Serverlar",

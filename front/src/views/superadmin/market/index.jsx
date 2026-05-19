@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import ApiCall from "../../../config";
-import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
+import ApiCall, { baseUrl } from "config";
+import { Plus, Edit, Trash2, ArrowLeft, Upload, ImageIcon, History } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
 import { toast, ToastContainer } from "react-toastify";
@@ -28,10 +28,13 @@ export default function MarketPage() {
     price: "",
     stockCount: "",
     barcode: "",
+    photoUrl: "",
     active: true,
   });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const nameInputRef = useRef(null);
+  const photoInputRef = useRef(null);
 
   useEffect(() => {
     if (!organizationId) {
@@ -58,7 +61,7 @@ export default function MarketPage() {
   };
 
   const resetForm = () => {
-    setForm({ name: "", description: "", price: "", stockCount: "", barcode: "", active: true });
+    setForm({ name: "", description: "", price: "", stockCount: "", barcode: "", photoUrl: "", active: true });
     setEditId(null);
     setShowSuggestions(false);
   };
@@ -76,10 +79,38 @@ export default function MarketPage() {
       price: product.price != null ? String(product.price) : "",
       stockCount: product.stockCount != null ? String(product.stockCount) : "",
       barcode: product.barcode || "",
+      photoUrl: product.photoUrl || "",
       active: product.active !== false,
     });
     setShowSuggestions(false);
     setShowModal(true);
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.includes("jpeg") && !file.type.includes("jpg")) {
+      toast.error("Faqat JPEG/JPG formatidagi rasm qabul qilinadi");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 200 * 1024) {
+      toast.error("Rasm hajmi 200KB dan oshmasligi kerak");
+      e.target.value = "";
+      return;
+    }
+    const formData = new FormData();
+    formData.append("photo", file);
+    setUploadingPhoto(true);
+    const res = await ApiCall("/api/v1/systemC/upload", "POST", formData);
+    setUploadingPhoto(false);
+    e.target.value = "";
+    if (!res?.error) {
+      setForm((prev) => ({ ...prev, photoUrl: res.data.url }));
+      toast.success("Rasm yuklandi");
+    } else {
+      toast.error(res.data?.message || "Rasm yuklashda xatolik");
+    }
   };
 
   const closeModal = () => {
@@ -113,6 +144,7 @@ export default function MarketPage() {
       price: form.price ? parseFloat(form.price) : null,
       stockCount: form.stockCount ? parseInt(form.stockCount) : 0,
       barcode: form.barcode || null,
+      photoUrl: form.photoUrl || null,
       active: form.active,
     };
 
@@ -161,12 +193,24 @@ export default function MarketPage() {
                 <p className="mt-0.5 text-sm text-gray-500">{categoryName} mahsulotlari</p>
               </div>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
-            >
-              <Plus size={16} /> Yangi mahsulot
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  navigate(
+                    `/superadmin/sales?organizationId=${organizationId}&orgName=${encodeURIComponent(orgName)}`
+                  )
+                }
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                <History size={16} /> Sotuvlar tarixi
+              </button>
+              <button
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
+              >
+                <Plus size={16} /> Yangi mahsulot
+              </button>
+            </div>
           </div>
 
           <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -305,6 +349,55 @@ export default function MarketPage() {
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Barcode (ixtiyoriy)"
               />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Rasm</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg"
+                ref={photoInputRef}
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              <div className="flex items-center gap-3">
+                {form.photoUrl ? (
+                  <img
+                    src={`${baseUrl}/api/v1/systemC/download?url=${encodeURIComponent(form.photoUrl)}`}
+                    alt="product"
+                    className="h-16 w-16 rounded-lg border border-gray-200 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50">
+                    <ImageIcon size={20} className="text-gray-400" />
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {uploadingPhoto ? (
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                    ) : (
+                      <Upload size={12} />
+                    )}
+                    {uploadingPhoto ? "Yuklanmoqda..." : "Rasm yuklash"}
+                  </button>
+                  <p className="text-xs text-gray-400">JPEG, max 200KB</p>
+                </div>
+                {form.photoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, photoUrl: "" }))}
+                    className="ml-auto text-xs text-rose-500 hover:text-rose-700"
+                  >
+                    O'chirish
+                  </button>
+                )}
+              </div>
             </div>
 
             <div>

@@ -16,6 +16,8 @@ public interface MarketService {
 
     HttpEntity<?> sell(Integer orgId, MarketSellRequest request);
 
+    HttpEntity<?> getSales(Integer orgId, int page, int limit);
+
     HttpEntity<?> getSuggestions(Integer categoryId);
 }
 

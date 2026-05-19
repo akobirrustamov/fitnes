@@ -104,5 +104,15 @@ public class MarketController {
         if (orgId == null) return unauthorized();
         return marketService.sell(orgId, body);
     }
+
+    @GetMapping("/sales")
+    public HttpEntity<?> getSales(HttpServletRequest request,
+                                   @RequestParam(required = false) Integer organizationId,
+                                   @RequestParam(defaultValue = "1") int page,
+                                   @RequestParam(defaultValue = "50") int limit) {
+        Integer orgId = organizationId != null ? organizationId : resolveOrgId(request);
+        if (orgId == null) return unauthorized();
+        return marketService.getSales(orgId, page, limit);
+    }
 }
 

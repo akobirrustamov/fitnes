@@ -239,10 +239,11 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public User decode(String token) {
-        if (!jwtService.validateToken(token)) {
+        String raw = token.startsWith("Bearer ") ? token.substring(7) : token;
+        if (!jwtService.validateToken(raw)) {
             throw new RuntimeException("Token is expired or invalid");
         }
-        String userId = jwtService.extractSubjectFromJwt(token);
+        String userId = jwtService.extractSubjectFromJwt(raw);
         return userRepo.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
