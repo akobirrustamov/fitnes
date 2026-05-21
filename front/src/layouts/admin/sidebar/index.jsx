@@ -72,7 +72,7 @@ const Sidebar = ({ open, onClose }) => {
       {/* LOGO */}
       <div className="mx-[20px] mt-[20px] flex items-center">
         <div className="mt-1 ml-1 h-2.5 font-poppins text-[26px] font-bold uppercase text-navy-700 dark:text-white">
-          ILMIY.BXU.UZ
+          FitCRM
         </div>
       </div>
 

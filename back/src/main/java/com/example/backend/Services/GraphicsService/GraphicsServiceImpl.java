@@ -14,16 +14,16 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -188,15 +188,17 @@ public class GraphicsServiceImpl implements GraphicsService {
 
             for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
 
-            Path targetDir = Paths.get("src/main/resources/static/downloads");
-            Files.createDirectories(targetDir);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            workbook.write(baos);
+            byte[] bytes = baos.toByteArray();
 
-            String fileName = "graphics_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".xlsx";
-            Path filePath = targetDir.resolve(fileName);
-            workbook.write(Files.newOutputStream(filePath));
-
-            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-            return ResponseEntity.ok(Map.of("url", base + "/downloads/" + fileName));
+            String fileName = "grafiklar_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".xlsx";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDisposition(ContentDisposition.attachment().filename(fileName).build());
+            headers.setContentLength(bytes.length);
+            return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
 
         } catch (Exception e) {
             log.error("Graphics excel xatoligi", e);

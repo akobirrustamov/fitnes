@@ -1,5 +1,6 @@
 package com.example.backend.Services.NewsService;
 
+import com.example.backend.Entity.News;
 import com.example.backend.Entity.NewsOrganization;
 import com.example.backend.Payload.req.NewsCreateRequest;
 import com.example.backend.Payload.req.NewsUpdateRequest;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,75 +95,59 @@ public class NewsServiceImpl implements NewsService {
     @Override
     @Transactional
     public HttpEntity<?> create(NewsCreateRequest request) {
-
-        Integer result = newsRepo.addNews(
-                request.getTitle(),
-                request.getDescription(),
-                request.getContent(),
-                request.getPhotoUrl(),
-                request.getUrl()
-        );
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "newsId", result
-                )
-        );
+        News news = News.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .content(request.getContent())
+                .photoUrl(request.getPhotoUrl())
+                .url(request.getUrl())
+                .startTime(request.getStartTime())
+                .endTime(request.getEndTime())
+                .active(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        news = newsRepo.save(news);
+        return ResponseEntity.ok(Map.of("success", true, "newsId", news.getId()));
     }
 
     @Override
     @Transactional
     public HttpEntity<?> update(Long id, NewsUpdateRequest request) {
-
-        Integer result = newsRepo.updateNews(
-                id,
-                request.getTitle(),
-                request.getDescription(),
-                request.getContent(),
-                request.getPhotoUrl(),
-                request.getUrl()
-        );
-
-        if (result == -1) {
+        News news = newsRepo.findById(id).orElse(null);
+        if (news == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "News topilmadi"));
         }
-
-        if (result == -2) {
+        if (news.isActive()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "Faol newsni yangilab bo'lmaydi"));
         }
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "Yangilandi"
-                )
-        );
+        if (request.getTitle() != null)       news.setTitle(request.getTitle());
+        if (request.getDescription() != null) news.setDescription(request.getDescription());
+        if (request.getContent() != null)     news.setContent(request.getContent());
+        if (request.getPhotoUrl() != null)    news.setPhotoUrl(request.getPhotoUrl());
+        if (request.getUrl() != null)         news.setUrl(request.getUrl());
+        news.setStartTime(request.getStartTime());
+        news.setEndTime(request.getEndTime());
+        newsRepo.save(news);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Yangilandi"));
     }
+
     @Override
     @Transactional
     public HttpEntity<?> delete(Long id) {
-
-        Integer result = newsRepo.deleteNews(id);
-
-        if (result == -1) {
+        News news = newsRepo.findById(id).orElse(null);
+        if (news == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "News topilmadi"));
         }
-
-        if (result == -2) {
+        if (news.isActive()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "Faol newsni o'chirib bo'lmaydi"));
         }
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "O'chirildi"
-                )
-        );
+        newsOrganizationRepo.deleteByNews_Id(id);
+        newsRepo.deleteById(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "O'chirildi"));
     }
 
     private Map<String, Object> toListMap(NewsListItemProjection item) {

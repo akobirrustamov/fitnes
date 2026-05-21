@@ -7,5 +7,6 @@ import java.util.Optional;
 
 public interface ApiSettingsRepo extends JpaRepository<ApiSettings, Long> {
     Optional<ApiSettings> findTopByOrderByIdDesc();
+    Optional<ApiSettings> findByOrganizationId(Integer organizationId);
 }
 

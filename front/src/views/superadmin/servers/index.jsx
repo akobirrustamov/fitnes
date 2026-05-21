@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import ApiCall, { baseUrl } from "config";
+import PhoneInput from "components/PhoneInput";
 import { Plus, Edit, Trash2, Eye, Link, Unlink, ToggleLeft, ToggleRight, KeyRound, Download } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
@@ -18,7 +19,7 @@ export default function ServersPage() {
   const [assignedOrgs, setAssignedOrgs] = useState([]);
   const [unassignedOrgs, setUnassignedOrgs] = useState([]);
   const [newPassword, setNewPassword] = useState("");
-  const [form, setForm] = useState({ name: "", login: "", password: "", phoneNumber: "", description: "", passwordHint: "" });
+  const [form, setForm] = useState({ name: "", login: "", password: "", phoneNumber: "+998", description: "", passwordHint: "" });
   const [editId, setEditId] = useState(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -73,7 +74,7 @@ export default function ServersPage() {
   };
 
   const resetForm = () => {
-    setForm({ name: "", login: "", password: "", phoneNumber: "", description: "", passwordHint: "" });
+    setForm({ name: "", login: "", password: "", phoneNumber: "+998", description: "", passwordHint: "" });
     setEditId(null);
   };
 
@@ -88,7 +89,7 @@ export default function ServersPage() {
       name: monitor.name || "",
       login: monitor.login || "",
       password: "",
-      phoneNumber: monitor.phoneNumber || "",
+      phoneNumber: monitor.phoneNumber || "+998",
       description: monitor.description || "",
       passwordHint: monitor.passwordHint || "",
     });
@@ -210,13 +211,13 @@ export default function ServersPage() {
   const monitorsList = safeArray(monitors);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Serverlar</h1>
-              <p className="mt-1 text-sm text-slate-600">Monitor serverlarini boshqarish.</p>
+              <h1 className="text-2xl font-semibold text-gray-900">Serverlar</h1>
+              <p className="mt-1 text-sm text-gray-600">Monitor serverlarini boshqarish.</p>
             </div>
             <div className="flex gap-2">
               <button
@@ -236,12 +237,12 @@ export default function ServersPage() {
             </div>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 font-semibold text-slate-900">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 bg-gray-50 px-6 py-4 font-semibold text-gray-900">
               Serverlar ro'yxati
             </div>
             <div className="overflow-x-auto px-6 py-4">
-              <table className="min-w-full text-left text-sm text-slate-600">
+              <table className="min-w-full text-left text-sm text-gray-600">
                 <thead>
                   <tr>
                     <th className="pb-3 font-medium">ID</th>
@@ -254,15 +255,15 @@ export default function ServersPage() {
                 <tbody>
                   {monitorsList.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-8 text-center text-slate-500">
+                      <td colSpan="5" className="py-8 text-center text-gray-500">
                         Serverlar topilmadi.
                       </td>
                     </tr>
                   ) : (
                     monitorsList.map((monitor) => (
-                      <tr key={monitor.id} className="border-t border-slate-200">
+                      <tr key={monitor.id} className="border-t border-gray-200">
                         <td className="py-3">{monitor.id}</td>
-                        <td className="py-3 font-medium text-slate-800">{monitor.name}</td>
+                        <td className="py-3 font-medium text-gray-800">{monitor.name}</td>
                         <td className="py-3">{monitor.phoneNumber || "—"}</td>
                         <td className="py-3">
                           {monitor.active ? (
@@ -270,7 +271,7 @@ export default function ServersPage() {
                               Faol
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-600">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-pink-100 px-2 py-1 text-xs font-semibold text-pink-600">
                               Nofaol
                             </span>
                           )}
@@ -285,14 +286,14 @@ export default function ServersPage() {
                           </button>
                           <button
                             onClick={() => openEditModal(monitor)}
-                            className="mr-1 rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200"
+                            className="mr-1 rounded-lg bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
                             title="Tahrirlash"
                           >
                             <Edit size={14} />
                           </button>
                           <button
                             onClick={() => handleDelete(monitor.id)}
-                            className="rounded-lg bg-rose-100 px-3 py-1 text-sm text-rose-700 hover:bg-rose-200"
+                            className="rounded-lg bg-pink-100 px-3 py-1 text-sm text-pink-700 hover:bg-pink-200"
                             title="O'chirish"
                           >
                             <Trash2 size={14} />
@@ -311,76 +312,75 @@ export default function ServersPage() {
       {/* Add / Edit Modal */}
       <Modal open={showModal} onClose={closeModal} center>
         <div className="w-[480px] max-w-full p-6">
-          <div className="mb-4 text-lg font-semibold text-slate-900">
+          <div className="mb-4 text-lg font-semibold text-gray-900">
             {editId ? "Serverni tahrirlash" : "Yangi server qo'shish"}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Nomi</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Nomi</label>
               <input
                 required
                 name="name"
                 value={form.name}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Server nomi"
               />
             </div>
             {!editId && (
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Login</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Login</label>
                 <input
                   required
                   name="login"
                   value={form.login}
                   onChange={handleInput}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                   placeholder="Login"
                 />
               </div>
             )}
             {!editId && (
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Parol</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Parol</label>
                 <input
                   required
                   type="password"
                   name="password"
                   value={form.password}
                   onChange={handleInput}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                   placeholder="Parol"
                 />
               </div>
             )}
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Telefon</label>
-              <input
+              <label className="mb-2 block text-sm font-medium text-gray-700">Telefon</label>
+              <PhoneInput
                 name="phoneNumber"
                 value={form.phoneNumber}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="Telefon raqami"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Tavsif</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Tavsif</label>
               <textarea
                 name="description"
                 value={form.description}
                 onChange={handleInput}
                 rows="2"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Server haqida qisqacha"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Parol eslatmasi</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Parol eslatmasi</label>
               <input
                 name="passwordHint"
                 value={form.passwordHint}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Parol eslatmasi"
               />
             </div>
@@ -395,7 +395,7 @@ export default function ServersPage() {
               <button
                 type="button"
                 onClick={closeModal}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 Bekor qilish
               </button>
@@ -410,7 +410,7 @@ export default function ServersPage() {
           {selectedMonitor && (
             <>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">{selectedMonitor.name}</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{selectedMonitor.name}</h2>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openPasswordModal(selectedMonitor)}
@@ -422,7 +422,7 @@ export default function ServersPage() {
                     onClick={() => handleToggleActive(selectedMonitor)}
                     className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                       selectedMonitor.active
-                        ? "bg-rose-100 text-rose-700 hover:bg-rose-200"
+                        ? "bg-pink-100 text-pink-700 hover:bg-pink-200"
                         : "bg-green-100 text-green-700 hover:bg-green-200"
                     }`}
                   >
@@ -435,20 +435,20 @@ export default function ServersPage() {
                 </div>
               </div>
 
-              <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                <div><span className="text-slate-500">Login:</span> <span className="font-medium">{selectedMonitor.login}</span></div>
-                <div><span className="text-slate-500">Telefon:</span> <span className="font-medium">{selectedMonitor.phoneNumber || "—"}</span></div>
-                <div><span className="text-slate-500">Holat:</span>{" "}
-                  <span className={`font-medium ${selectedMonitor.active ? "text-green-600" : "text-rose-600"}`}>
+              <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm">
+                <div><span className="text-gray-500">Login:</span> <span className="font-medium">{selectedMonitor.login}</span></div>
+                <div><span className="text-gray-500">Telefon:</span> <span className="font-medium">{selectedMonitor.phoneNumber || "—"}</span></div>
+                <div><span className="text-gray-500">Holat:</span>{" "}
+                  <span className={`font-medium ${selectedMonitor.active ? "text-green-600" : "text-pink-600"}`}>
                     {selectedMonitor.active ? "Faol" : "Nofaol"}
                   </span>
                 </div>
-                <div><span className="text-slate-500">Tavsif:</span> <span className="font-medium">{selectedMonitor.description || "—"}</span></div>
+                <div><span className="text-gray-500">Tavsif:</span> <span className="font-medium">{selectedMonitor.description || "—"}</span></div>
               </div>
 
               <div className="mt-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-800">Biriktirilgan zallar</h3>
+                  <h3 className="font-semibold text-gray-800">Biriktirilgan zallar</h3>
                   <button
                     onClick={openAssignModal}
                     className="inline-flex items-center gap-1 rounded-lg bg-gray-900 hover:bg-gray-700 px-3 py-1.5 text-xs font-medium text-white transition"
@@ -456,9 +456,9 @@ export default function ServersPage() {
                     <Link size={13} /> Zal biriktirish
                   </button>
                 </div>
-                <div className="overflow-hidden rounded-xl border border-slate-200">
-                  <table className="min-w-full text-left text-sm text-slate-600">
-                    <thead className="bg-slate-50">
+                <div className="overflow-hidden rounded-xl border border-gray-200">
+                  <table className="min-w-full text-left text-sm text-gray-600">
+                    <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-2 font-medium">Nomi</th>
                         <th className="px-4 py-2 font-medium">Direktor</th>
@@ -469,26 +469,26 @@ export default function ServersPage() {
                     <tbody>
                       {safeArray(assignedOrgs).length === 0 ? (
                         <tr>
-                          <td colSpan="4" className="px-4 py-6 text-center text-slate-400">
+                          <td colSpan="4" className="px-4 py-6 text-center text-gray-400">
                             Biriktirilgan zallar yo'q
                           </td>
                         </tr>
                       ) : (
                         safeArray(assignedOrgs).map((org) => (
-                          <tr key={org.id} className="border-t border-slate-100">
+                          <tr key={org.id} className="border-t border-gray-100">
                             <td className="px-4 py-2">{org.name}</td>
                             <td className="px-4 py-2">{org.directorName || "—"}</td>
                             <td className="px-4 py-2">
                               {org.active ? (
                                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">Faol</span>
                               ) : (
-                                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-600">Nofaol</span>
+                                <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs text-pink-600">Nofaol</span>
                               )}
                             </td>
                             <td className="px-4 py-2 text-right">
                               <button
                                 onClick={() => handleRemoveOrg(org.id)}
-                                className="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-2 py-1 text-xs text-rose-700 hover:bg-rose-200"
+                                className="inline-flex items-center gap-1 rounded-lg bg-pink-100 px-2 py-1 text-xs text-pink-700 hover:bg-pink-200"
                               >
                                 <Unlink size={12} /> Uzish
                               </button>
@@ -508,16 +508,16 @@ export default function ServersPage() {
       {/* Change Password Modal */}
       <Modal open={showPasswordModal} onClose={closePasswordModal} center>
         <div className="w-[400px] max-w-full p-6">
-          <div className="mb-4 text-lg font-semibold text-slate-900">Parolni o'zgartirish</div>
+          <div className="mb-4 text-lg font-semibold text-gray-900">Parolni o'zgartirish</div>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Yangi parol</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Yangi parol</label>
               <input
                 required
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Yangi parolni kiriting"
               />
             </div>
@@ -531,7 +531,7 @@ export default function ServersPage() {
               <button
                 type="button"
                 onClick={closePasswordModal}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 Bekor qilish
               </button>
@@ -543,13 +543,13 @@ export default function ServersPage() {
       {/* Assign Organization Modal */}
       <Modal open={showAssignModal} onClose={closeAssignModal} center>
         <div className="w-[500px] max-w-full p-6">
-          <div className="mb-4 text-lg font-semibold text-slate-900">Zal biriktirish</div>
-          <p className="mb-4 text-sm text-slate-500">
+          <div className="mb-4 text-lg font-semibold text-gray-900">Zal biriktirish</div>
+          <p className="mb-4 text-sm text-gray-500">
             Hech qaysi serverga biriktirilmagan zallar ro'yxati:
           </p>
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="min-w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50">
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <table className="min-w-full text-left text-sm text-gray-600">
+              <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-2 font-medium">Nomi</th>
                   <th className="px-4 py-2 font-medium">Direktor</th>
@@ -559,13 +559,13 @@ export default function ServersPage() {
               <tbody>
                 {safeArray(unassignedOrgs).length === 0 ? (
                   <tr>
-                    <td colSpan="3" className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan="3" className="px-4 py-6 text-center text-gray-400">
                       Biriktirilmagan zallar yo'q
                     </td>
                   </tr>
                 ) : (
                   safeArray(unassignedOrgs).map((org) => (
-                    <tr key={org.id} className="border-t border-slate-100">
+                    <tr key={org.id} className="border-t border-gray-100">
                       <td className="px-4 py-2">{org.name}</td>
                       <td className="px-4 py-2">{org.directorName || "—"}</td>
                       <td className="px-4 py-2 text-right">
@@ -585,7 +585,7 @@ export default function ServersPage() {
           <div className="mt-4 flex justify-end">
             <button
               onClick={closeAssignModal}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               Yopish
             </button>

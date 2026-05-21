@@ -263,7 +263,7 @@ export default function MarketPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(product.id)}
-                            className="rounded-lg bg-rose-100 px-3 py-1 text-sm text-rose-700 hover:bg-rose-200"
+                            className="rounded-lg bg-pink-100 px-3 py-1 text-sm text-pink-700 hover:bg-pink-200"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -392,7 +392,7 @@ export default function MarketPage() {
                   <button
                     type="button"
                     onClick={() => setForm((prev) => ({ ...prev, photoUrl: "" }))}
-                    className="ml-auto text-xs text-rose-500 hover:text-rose-700"
+                    className="ml-auto text-xs text-pink-500 hover:text-pink-700"
                   >
                     O'chirish
                   </button>

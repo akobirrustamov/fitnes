@@ -1,41 +1,53 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ApiCall from "../../../config";
-import { Plus, Edit, Trash2, X } from "lucide-react";
+import { Plus, Edit, Trash2, Image, ExternalLink } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+const PAGE_SIZE = 20;
+
+const EMPTY_FORM = {
+  title: "",
+  description: "",
+  content: "",
+  photoUrl: "",
+  url: "",
+  startTime: "",
+  endTime: "",
+};
 
 export default function NewsPage() {
   const [news, setNews] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [message, setMessage] = useState("");
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    content: "",
-    photoUrl: "",
-    url: "",
-    startTime: "",
-    endTime: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileRef = useRef(null);
 
-  const safeArray = (value) => (Array.isArray(value) ? value : []);
-  const newsList = safeArray(news);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   useEffect(() => {
-    fetchNews();
-  }, []);
+    fetchNews(page);
+  }, [page]);
 
-  const fetchNews = async () => {
-    const result = await ApiCall(
-      "/api/v1/admin/news/getAll",
-      "GET",
-      null,
-      { page: 1, pageSize: 50 }
-    );
+  const fetchNews = async (p = 1) => {
+    setLoading(true);
+    const result = await ApiCall("/api/v1/admin/news/getAll", "GET", null, {
+      page: p,
+      pageSize: PAGE_SIZE,
+    });
+    setLoading(false);
     if (!result?.error) {
-      setNews(result.data?.items || result.data || []);
+      setNews(result.data?.items || []);
+      setTotalCount(result.data?.totalCount || 0);
+    } else {
+      toast.error("Yangiliklar yuklanmadi");
     }
   };
 
@@ -44,238 +56,349 @@ export default function NewsPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const resetForm = () => {
-    setForm({
-      title: "",
-      description: "",
-      content: "",
-      photoUrl: "",
-      url: "",
-      startTime: "",
-      endTime: "",
-    });
-    setEditId(null);
-    setMessage("");
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.includes("jpeg") && !file.type.includes("jpg")) {
+      toast.error("Faqat JPEG/JPG formatidagi rasm qabul qilinadi");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 200 * 1024) {
+      toast.error("Rasm hajmi 200KB dan oshmasligi kerak");
+      e.target.value = "";
+      return;
+    }
+    const formData = new FormData();
+    formData.append("photo", file);
+    setUploadingPhoto(true);
+    const res = await ApiCall("/api/v1/systemC/upload", "POST", formData);
+    setUploadingPhoto(false);
+    e.target.value = "";
+    if (!res?.error) {
+      setForm((prev) => ({ ...prev, photoUrl: res.data.url }));
+      toast.success("Rasm yuklandi");
+    } else {
+      toast.error(res.data?.message || "Rasm yuklashda xatolik");
+    }
   };
 
-  const openCreateModal = () => {
-    resetForm();
+  const openCreate = () => {
+    setEditId(null);
+    setForm(EMPTY_FORM);
     setShowModal(true);
   };
 
-  const handleEdit = (newsItem) => {
-    setEditId(newsItem.newsId);
+  const openEdit = (item) => {
+    setEditId(item.newsId);
     setForm({
-      title: newsItem.title || "",
-      description: newsItem.description || "",
-      content: newsItem.content || "",
-      photoUrl: newsItem.photoUrl || "",
-      url: newsItem.url || "",
-      startTime: newsItem.startTime || "",
-      endTime: newsItem.endTime || "",
+      title: item.title || "",
+      description: item.description || "",
+      content: item.content || "",
+      photoUrl: item.photoUrl || "",
+      url: item.url || "",
+      startTime: item.startTime ? item.startTime.slice(0, 16) : "",
+      endTime: item.endTime ? item.endTime.slice(0, 16) : "",
     });
-    setMessage("");
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
-    resetForm();
+    setEditId(null);
+    setForm(EMPTY_FORM);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-
+    if (!form.title.trim()) {
+      toast.error("Sarlavha kiritilishi shart");
+      return;
+    }
+    setSaving(true);
     const payload = {
-      title: form.title,
-      description: form.description,
-      content: form.content,
-      photoUrl: form.photoUrl,
-      url: form.url,
+      title: form.title.trim(),
+      description: form.description.trim(),
+      content: form.content.trim(),
+      photoUrl: form.photoUrl.trim(),
+      url: form.url.trim(),
       startTime: form.startTime || null,
       endTime: form.endTime || null,
     };
 
-    const apiUrl = editId
+    const url = editId
       ? `/api/v1/admin/news/update?id=${editId}`
       : "/api/v1/admin/news/create";
     const method = editId ? "PUT" : "POST";
 
-    const result = await ApiCall(apiUrl, method, payload);
-    setLoading(false);
+    const result = await ApiCall(url, method, payload);
+    setSaving(false);
 
     if (!result?.error) {
-      await fetchNews();
+      toast.success(editId ? "Yangilik yangilandi" : "Yangilik qo'shildi");
       closeModal();
-      setMessage(editId ? "Yangilik yangilandi." : "Yangi yangilik yaratildi.");
+      fetchNews(editId ? page : 1);
+      if (!editId) setPage(1);
     } else {
-      setMessage("Xatolik yuz berdi. Iltimos, ma'lumotlarni tekshiring.");
+      const msg = result.data?.message || "Xatolik yuz berdi";
+      toast.error(msg);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Ushbu yangilikni o'chirishni xohlaysizmi?")) return;
+  const handleDelete = async (item) => {
+    if (!window.confirm(`"${item.title}" yangiligini o'chirishni xohlaysizmi?`))
+      return;
     const result = await ApiCall(
-      `/api/v1/admin/news/delete?id=${id}`,
+      `/api/v1/admin/news/delete?id=${item.newsId}`,
       "DELETE"
     );
     if (!result?.error) {
-      await fetchNews();
-      setMessage("Yangilik o'chirildi.");
+      toast.success("Yangilik o'chirildi");
+      fetchNews(page);
     } else {
-      setMessage("Yangilikni o'chirishda xatolik yuz berdi.");
+      const msg = result.data?.message || "O'chirishda xatolik yuz berdi";
+      toast.error(msg);
     }
   };
 
+  const fmt = (dt) =>
+    dt
+      ? new Date(dt).toLocaleString("uz-UZ", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
+
   return (
-    <div className="bg-gray-50 min-h-screen p-4">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="border-gray-200 rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-gray-900 text-2xl font-semibold">
-                Yangiliklar
-              </h1>
-              <p className="text-gray-600 mt-1 text-sm">
-                Yangiliklar ro'yxatini ko'rish va boshqarish.
-              </p>
-            </div>
-            <button
-              onClick={openCreateModal}
-              className="bg-gray-900 hover:bg-gray-700 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition"
-            >
-              <Plus size={16} /> Yangi yangilik
-            </button>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <ToastContainer position="top-right" autoClose={3000} />
+
+      <div className="mx-auto max-w-5xl space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Yangiliklar</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Jami: {totalCount} ta yangilik
+            </p>
           </div>
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
+          >
+            <Plus size={16} /> Yangi yangilik
+          </button>
+        </div>
 
-          {message && (
-            <div className="mt-4 rounded-xl bg-green-50 p-4 text-sm text-green-700">
-              {message}
+        {/* List */}
+        <div className="space-y-3">
+          {loading ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-sm text-gray-400">
+              Yuklanmoqda...
             </div>
-          )}
-
-          <div className="mt-6 space-y-4">
-            {newsList.length === 0 ? (
-              <div className="text-gray-500 text-center py-8">
-                Yangiliklar topilmadi.
-              </div>
-            ) : (
-              newsList.map((item) => (
-                <div
-                  key={item.newsId}
-                  className="border-gray-200 rounded-xl border bg-white p-4 hover:shadow-md transition"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-gray-900 font-semibold">
-                        {item.title}
-                      </h3>
-                      <p className="text-gray-600 mt-2 text-sm">
-                        {item.description}
-                      </p>
-                      {item.createdTime && (
-                        <p className="text-gray-500 mt-2 text-xs">
-                          {new Date(item.createdTime).toLocaleDateString(
-                            "uz-UZ"
+          ) : news.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-sm text-gray-400">
+              Yangiliklar topilmadi
+            </div>
+          ) : (
+            news.map((item) => (
+              <div
+                key={item.newsId}
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+              >
+                <div className="flex gap-4">
+                  {item.photoUrl && (
+                    <img
+                      src={item.photoUrl}
+                      alt={item.title}
+                      className="h-20 w-20 flex-shrink-0 rounded-xl object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold text-gray-900">
+                          {item.title}
+                        </h3>
+                        {item.description && (
+                          <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                            {item.description}
+                          </p>
+                        )}
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                          <span>{fmt(item.createdTime)}</span>
+                          {item.url && (
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-blue-500 hover:underline"
+                            >
+                              <ExternalLink size={11} /> Havola
+                            </a>
                           )}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg px-3 py-1 text-sm"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.newsId)}
-                        className="bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-lg px-3 py-1 text-sm"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-2">
+                        <button
+                          onClick={() => openEdit(item)}
+                          className="rounded-lg bg-gray-100 px-3 py-1.5 text-gray-700 transition hover:bg-gray-200"
+                          title="Tahrirlash"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="rounded-lg bg-pink-50 px-3 py-1.5 text-pink-600 transition hover:bg-pink-100"
+                          title="O'chirish"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              </div>
+            ))
+          )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Oldingi
+            </button>
+            <span className="text-sm text-gray-500">
+              {page} / {totalPages}
+            </span>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Keyingi
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Modal */}
       <Modal open={showModal} onClose={closeModal} center>
-        <div className="w-[520px] max-w-full p-6">
-          <div className="text-gray-900 mb-4 text-lg font-semibold">
+        <div className="w-[560px] max-w-full p-6">
+          <h2 className="mb-5 text-lg font-semibold text-gray-900">
             {editId ? "Yangilikni tahrirlash" : "Yangi yangilik qo'shish"}
-          </div>
+          </h2>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">
-                Sarlavha
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Sarlavha <span className="text-pink-500">*</span>
               </label>
               <input
-                required
                 name="title"
                 value={form.title}
                 onChange={handleInput}
-                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                required
                 placeholder="Yangilik sarlavhasi"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               />
             </div>
+
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Qisqacha tavsif
               </label>
               <textarea
                 name="description"
                 value={form.description}
                 onChange={handleInput}
-                rows="2"
-                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                placeholder="Yangilik tavsifi"
+                rows={2}
+                placeholder="Yangilik haqida qisqacha..."
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               />
             </div>
+
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">
-                Kontent
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Kontent (to'liq matn)
               </label>
               <textarea
                 name="content"
                 value={form.content}
                 onChange={handleInput}
-                rows="5"
-                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                placeholder="Yangilik matni"
+                rows={5}
+                placeholder="Yangilik matni..."
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               />
             </div>
+
+            {/* Photo upload */}
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">
-                Rasm URL
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Rasm (JPEG, max 200KB)
               </label>
-              <input
-                name="photoUrl"
-                value={form.photoUrl}
-                onChange={handleInput}
-                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                placeholder="https://example.com/image.jpg"
-              />
+              <div className="flex items-center gap-3">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".jpg,.jpeg"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <Image size={15} />
+                  {uploadingPhoto ? "Yuklanmoqda..." : "Rasm yuklash"}
+                </button>
+                {form.photoUrl && (
+                  <img
+                    src={form.photoUrl}
+                    alt="preview"
+                    className="h-10 w-10 rounded-lg object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                )}
+              </div>
+              {form.photoUrl && (
+                <p className="mt-1 truncate text-xs text-gray-400">
+                  {form.photoUrl}
+                </p>
+              )}
             </div>
+
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">
-                URL
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Havola (URL)
               </label>
               <input
                 name="url"
                 value={form.url}
                 onChange={handleInput}
-                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder="https://example.com"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               />
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
                   Boshlanish vaqti
                 </label>
                 <input
@@ -283,34 +406,35 @@ export default function NewsPage() {
                   name="startTime"
                   value={form.startTime}
                   onChange={handleInput}
-                  className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 />
               </div>
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">
-                  Tugatish vaqti
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Tugash vaqti
                 </label>
                 <input
                   type="datetime-local"
                   name="endTime"
                   value={form.endTime}
                   onChange={handleInput}
-                  className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 />
               </div>
             </div>
-            <div className="flex items-center gap-3 pt-4">
+
+            <div className="flex items-center gap-3 pt-2">
               <button
                 type="submit"
-                disabled={loading}
-                className="bg-gray-900 hover:bg-gray-700 inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={saving || uploadingPhoto}
+                className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {editId ? "Yangilash" : "Saqlash"}
+                {saving ? "Saqlanmoqda..." : editId ? "Yangilash" : "Saqlash"}
               </button>
               <button
                 type="button"
                 onClick={closeModal}
-                className="border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center justify-center rounded-xl border bg-white px-4 py-3 text-sm font-semibold transition"
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 Bekor qilish
               </button>

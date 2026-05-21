@@ -31,8 +31,9 @@ public class TerminalsController {
         if (header == null || !header.startsWith("Bearer ")) return null;
         String token = header.substring(7);
         try {
-            String phone = jwtService.extractSubjectFromJwt(token);
-            return userRepo.findByPhone(phone)
+            String subject = jwtService.extractSubjectFromJwt(token);
+            java.util.UUID userId = java.util.UUID.fromString(subject);
+            return userRepo.findById(userId)
                     .map(com.example.backend.Entity.User::getNumber)
                     .orElse(null);
         } catch (Exception e) {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import ApiCall from "config";
-import { Plus, Trash2 } from "lucide-react";
+import axios from "axios";
+import ApiCall, { baseUrl } from "config";
+import { Plus, Trash2, Download } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
 import { toast, ToastContainer } from "react-toastify";
@@ -33,6 +34,7 @@ export default function PaymentsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useEffect(() => {
     fetchPayments(1);
@@ -89,6 +91,33 @@ export default function PaymentsPage() {
     }
   };
 
+  const handleDownloadExcel = async () => {
+    setDownloadingExcel(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const params = {};
+      if (filterCategory) params.category = filterCategory;
+      if (filterType) params.paymentType = filterType;
+      if (filterImportant !== "") params.isImportant = filterImportant === "true";
+      const res = await axios.get(`${baseUrl}/api/v1/organizations/payments/downloadExcel`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "tolovlar.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Excel yuklab olishda xatolik.");
+    }
+    setDownloadingExcel(false);
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm("To'lovni o'chirishni xohlaysizmi?")) return;
     const res = await ApiCall(`/api/v1/organizations/payments/delete?id=${id}`, "DELETE");
@@ -101,7 +130,7 @@ export default function PaymentsPage() {
     penalty: "Jarima", other: "Boshqa",
   }[c] || c);
 
-  const typeColor = (t) => t === "income" ? "text-green-600" : "text-rose-500";
+  const typeColor = (t) => t === "income" ? "text-green-600" : "text-pink-500";
   const typeLabel = (t) => t === "income" ? "Kirim" : "Chiqim";
 
   return (
@@ -115,12 +144,21 @@ export default function PaymentsPage() {
               <h1 className="text-2xl font-semibold text-gray-900">To'lovlar</h1>
               <p className="mt-0.5 text-sm text-gray-500">Jami {totalCount} ta to'lov</p>
             </div>
-            <button
-              onClick={() => { setForm(EMPTY_FORM); setShowModal(true); }}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              <Plus size={16} /> Yangi to'lov
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDownloadExcel}
+                disabled={downloadingExcel}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Download size={16} /> {downloadingExcel ? "Yuklanmoqda..." : "Excel"}
+              </button>
+              <button
+                onClick={() => { setForm(EMPTY_FORM); setShowModal(true); }}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+              >
+                <Plus size={16} /> Yangi to'lov
+              </button>
+            </div>
           </div>
 
           {/* Filters */}
@@ -221,7 +259,7 @@ export default function PaymentsPage() {
                       <td className="px-6 py-3 text-right">
                         <button
                           onClick={() => handleDelete(p.id)}
-                          className="rounded-lg bg-rose-100 px-2 py-1 text-rose-700 hover:bg-rose-200"
+                          className="rounded-lg bg-pink-100 px-2 py-1 text-pink-700 hover:bg-pink-200"
                         >
                           <Trash2 size={13} />
                         </button>

@@ -1,5 +1,6 @@
 package com.example.backend.Services.OrganizationService;
 
+import com.example.backend.Entity.ApiSettings;
 import com.example.backend.Entity.Role;
 import com.example.backend.Entity.User;
 import com.example.backend.Entity.UserProfile;
@@ -8,6 +9,7 @@ import com.example.backend.Payload.req.*;
 import com.example.backend.Payload.res.OrganizationDetailResponse;
 import com.example.backend.Payload.res.OrganizationListItem;
 import com.example.backend.Payload.res.PagedResponse;
+import com.example.backend.Repository.ApiSettingsRepo;
 import com.example.backend.Repository.RoleRepo;
 import com.example.backend.Repository.UserProfileRepo;
 import com.example.backend.Repository.UserRepo;
@@ -42,6 +44,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private final RoleRepo         roleRepo;
     private final PasswordEncoder  passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final ApiSettingsRepo  apiSettingsRepo;
 
     // ═══════════════════════════════════════════════════════════
     //  GET /api/v1/admin/organizations/getAll
@@ -142,6 +145,17 @@ public class OrganizationServiceImpl implements OrganizationService {
                 .balance(BigDecimal.ZERO)
                 .build();
         userProfileRepo.save(profile);
+
+        ApiSettings defaultSettings = ApiSettings.builder()
+                .organizationId(nextNumber)
+                .openingTime("08:00")
+                .closingTime("22:00")
+                .maxUsersCount(500)
+                .maxTerminalsCount(5)
+                .maxGraphicsCount(10)
+                .pricePerUser(0L)
+                .build();
+        apiSettingsRepo.save(defaultSettings);
 
         log.info("Tashkilot yaratildi: id={}, login={}", nextNumber, request.getLogin());
         return ResponseEntity.status(HttpStatus.CREATED)

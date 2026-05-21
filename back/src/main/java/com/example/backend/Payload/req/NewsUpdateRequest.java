@@ -2,6 +2,8 @@ package com.example.backend.Payload.req;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class NewsUpdateRequest {
 
@@ -14,5 +16,9 @@ public class NewsUpdateRequest {
     private String photoUrl;
 
     private String url;
+
+    private LocalDateTime startTime;
+
+    private LocalDateTime endTime;
 
 }

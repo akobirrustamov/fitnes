@@ -24,9 +24,12 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -135,6 +138,40 @@ public class DatesServiceImpl implements DatesService {
                 "date", today.toString(),
                 "isKanikul", isKanikul,
                 "hasRecord", hasRecord
+        ));
+    }
+
+    @Override
+    @Transactional
+    public HttpEntity<?> generate(Integer orgId, Integer month, Integer year) {
+        LocalDate from = LocalDate.of(year, month, 1);
+        LocalDate to = from.plusMonths(1);
+
+        List<OrganizationDate> existing = datesRepo
+                .findByOrganizationIdAndDateGreaterThanEqualAndDateLessThanOrderByDateAsc(orgId, from, to);
+        Set<LocalDate> existingDates = existing.stream()
+                .map(OrganizationDate::getDate)
+                .collect(Collectors.toSet());
+
+        List<OrganizationDate> toSave = new ArrayList<>();
+        LocalDate current = from;
+        while (current.isBefore(to)) {
+            if (!existingDates.contains(current)) {
+                toSave.add(OrganizationDate.builder()
+                        .organizationId(orgId)
+                        .date(current)
+                        .isHoliday(false)
+                        .isKanikul(false)
+                        .build());
+            }
+            current = current.plusDays(1);
+        }
+
+        datesRepo.saveAll(toSave);
+        log.info("Sanalar yaratildi: orgId={}, month={}/{}, count={}", orgId, month, year, toSave.size());
+        return ResponseEntity.ok(Map.of(
+                "message", "Sanalar muvaffaqiyatli yaratildi",
+                "created", toSave.size()
         ));
     }
 

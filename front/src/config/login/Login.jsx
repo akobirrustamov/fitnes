@@ -69,6 +69,9 @@ export default function Auth() {
           localStorage.setItem("refresh_token", loginData.refreshToken);
         }
       }
+      if (loginData.userId != null) {
+        localStorage.setItem("user_id", loginData.userId);
+      }
 
       const activeRoleName = normalizeRoleName(
         loginData.roleName || loginData.role || loginData.role?.name || ""

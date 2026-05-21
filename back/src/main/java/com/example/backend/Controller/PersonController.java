@@ -1,6 +1,8 @@
 package com.example.backend.Controller;
 
+import com.example.backend.Entity.Person;
 import com.example.backend.Payload.req.*;
+import com.example.backend.Repository.PersonRepo;
 import com.example.backend.Repository.UserRepo;
 import com.example.backend.Security.JwtService;
 import com.example.backend.Services.PersonService.PersonService;
@@ -10,9 +12,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -25,6 +29,8 @@ public class PersonController {
     private final PersonService personService;
     private final JwtService jwtService;
     private final UserRepo userRepo;
+    private final PersonRepo personRepo;
+    private final PasswordEncoder passwordEncoder;
 
     private Integer resolveOrgId(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
@@ -149,6 +155,28 @@ public class PersonController {
         Integer orgId = resolveOrgId(request);
         if (orgId == null) return unauthorized();
         return personService.downloadExcel(orgId, isClient);
+    }
+
+    @PutMapping("/setPassword")
+    public ResponseEntity<?> setPassword(HttpServletRequest request,
+                                         @RequestParam Long id,
+                                         @RequestBody Map<String, String> body) {
+        Integer orgId = resolveOrgId(request);
+        if (orgId == null) return unauthorized();
+
+        String newPassword = body.get("password");
+        if (newPassword == null || newPassword.trim().length() < 4) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Parol kamida 4 ta belgi bo'lishi kerak"));
+        }
+
+        Optional<Person> opt = personRepo.findByIdAndOrganizationIdAndDeletedFalse(id, orgId);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+
+        Person person = opt.get();
+        person.setPassword(passwordEncoder.encode(newPassword.trim()));
+        personRepo.save(person);
+        return ResponseEntity.ok(Map.of("message", "Parol o'rnatildi"));
     }
 }
 

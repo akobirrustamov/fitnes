@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import ApiCall from "config";
+import PhoneInput from "components/PhoneInput";
 import { Plus, Edit, Trash2, CheckCircle2, KeyRound, Search } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
@@ -26,7 +27,7 @@ export default function OrganizationsPage() {
     name: "",
     login: "",
     directorName: "",
-    phoneNumber: "",
+    phoneNumber: "+998",
     provinceId: "",
     regionId: "",
     businessSphere: "",
@@ -105,7 +106,7 @@ export default function OrganizationsPage() {
   };
 
   const resetForm = () => {
-    setForm({ name: "", login: "", directorName: "", phoneNumber: "", provinceId: "", regionId: "", businessSphere: "", location: "", passwordHint: "" });
+    setForm({ name: "", login: "", directorName: "", phoneNumber: "+998", provinceId: "", regionId: "", businessSphere: "", location: "", passwordHint: "" });
     setEditId(null);
   };
 
@@ -120,7 +121,7 @@ export default function OrganizationsPage() {
       name: org.name || "",
       login: org.login || "",
       directorName: org.directorName || "",
-      phoneNumber: org.phoneNumber || "",
+      phoneNumber: org.phoneNumber || "+998",
       provinceId: org.provinceId || "",
       regionId: org.regionId || "",
       businessSphere: org.businessSphere || "",
@@ -216,13 +217,13 @@ export default function OrganizationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Zallar</h1>
-              <p className="mt-1 text-sm text-slate-600">Tashkilotlarni boshqarish va yangilash.</p>
+              <h1 className="text-2xl font-semibold text-gray-900">Zallar</h1>
+              <p className="mt-1 text-sm text-gray-600">Tashkilotlarni boshqarish va yangilash.</p>
             </div>
             <button
               onClick={openCreateModal}
@@ -284,13 +285,13 @@ export default function OrganizationsPage() {
             )}
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 font-semibold text-slate-900">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 bg-gray-50 px-6 py-4 font-semibold text-gray-900">
               Tashkilotlar ro'yxati
-              {totalCount > 0 && <span className="ml-2 text-sm font-normal text-slate-500">({totalCount} ta)</span>}
+              {totalCount > 0 && <span className="ml-2 text-sm font-normal text-gray-500">({totalCount} ta)</span>}
             </div>
             <div className="overflow-x-auto px-6 py-4">
-              <table className="min-w-full text-left text-sm text-slate-600">
+              <table className="min-w-full text-left text-sm text-gray-600">
                 <thead>
                   <tr>
                     <th className="pb-3 font-medium">ID</th>
@@ -304,11 +305,11 @@ export default function OrganizationsPage() {
                 <tbody>
                   {organizationsList.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="py-8 text-center text-slate-500">Tashkilotlar topilmadi.</td>
+                      <td colSpan="6" className="py-8 text-center text-gray-500">Tashkilotlar topilmadi.</td>
                     </tr>
                   ) : (
                     organizationsList.map((org) => (
-                      <tr key={org.id} className="border-t border-slate-200">
+                      <tr key={org.id} className="border-t border-gray-200">
                         <td className="py-3">{org.id}</td>
                         <td className="py-3">{org.name}</td>
                         <td className="py-3">{getProvinceName(org.regionId)} / {getRegionName(org)}</td>
@@ -328,7 +329,7 @@ export default function OrganizationsPage() {
                         <td className="py-3 text-right">
                           <button
                             onClick={() => openEditModal(org)}
-                            className="mr-2 rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200"
+                            className="mr-2 rounded-lg bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
                           >
                             <Edit size={14} />
                           </button>
@@ -340,7 +341,7 @@ export default function OrganizationsPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(org.id)}
-                            className="rounded-lg bg-rose-100 px-3 py-1 text-sm text-rose-700 hover:bg-rose-200"
+                            className="rounded-lg bg-pink-100 px-3 py-1 text-sm text-pink-700 hover:bg-pink-200"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -378,28 +379,28 @@ export default function OrganizationsPage() {
 
       <Modal open={showModal} onClose={closeModal} center>
         <div className="w-[520px] max-w-full p-6">
-          <div className="mb-4 text-lg font-semibold text-slate-900">
+          <div className="mb-4 text-lg font-semibold text-gray-900">
             {editId ? "Tashkilotni tahrirlash" : "Yangi tashkilot qo'shish"}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Nomi</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Nomi</label>
               <input
                 required
                 name="name"
                 value={form.name}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Tashkilot nomi"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Viloyat</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Viloyat</label>
               <select
                 name="provinceId"
                 value={form.provinceId}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               >
                 <option value="">Viloyatni tanlang</option>
                 {provincesList.map((p) => (
@@ -408,12 +409,12 @@ export default function OrganizationsPage() {
               </select>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Tuman</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Tuman</label>
               <select
                 name="regionId"
                 value={form.regionId}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               >
                 <option value="">Tumanni tanlang</option>
                 {regionsList.map((r) => (
@@ -423,64 +424,63 @@ export default function OrganizationsPage() {
             </div>
             {!editId && (
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Login</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Login</label>
                 <input
                   required
                   name="login"
                   value={form.login}
                   onChange={handleInput}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                   placeholder="Login"
                 />
               </div>
             )}
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Direktor</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Direktor</label>
               <input
                 name="directorName"
                 value={form.directorName}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Direktor ismi"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Telefon</label>
-              <input
+              <label className="mb-2 block text-sm font-medium text-gray-700">Telefon</label>
+              <PhoneInput
                 name="phoneNumber"
                 value={form.phoneNumber}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="Telefon raqami"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Joylashuv</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Joylashuv</label>
               <input
                 name="location"
                 value={form.location}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Joylashuv"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Soha</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Soha</label>
               <input
                 name="businessSphere"
                 value={form.businessSphere}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Biznes sohasi"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Parol eslatmasi</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Parol eslatmasi</label>
               <input
                 name="passwordHint"
                 value={form.passwordHint}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Parol eslatmasi"
               />
             </div>
@@ -495,7 +495,7 @@ export default function OrganizationsPage() {
               <button
                 type="button"
                 onClick={closeModal}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 Bekor qilish
               </button>
@@ -505,27 +505,27 @@ export default function OrganizationsPage() {
       </Modal>
       <Modal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} center>
         <div className="w-[380px] max-w-full p-6">
-          <div className="mb-4 text-lg font-semibold text-slate-900">
+          <div className="mb-4 text-lg font-semibold text-gray-900">
             Parolni o'zgartirish — {passwordTarget?.name}
           </div>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Yangi parol</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Yangi parol</label>
               <input
                 required
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Yangi parol"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Parol eslatmasi</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Parol eslatmasi</label>
               <input
                 value={passwordForm.passwordHint}
                 onChange={(e) => setPasswordForm((p) => ({ ...p, passwordHint: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Eslatma (ixtiyoriy)"
               />
             </div>
@@ -540,7 +540,7 @@ export default function OrganizationsPage() {
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(false)}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 Bekor qilish
               </button>

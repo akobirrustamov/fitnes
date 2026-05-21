@@ -8,18 +8,18 @@ const Footer = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div>
-            <h3 className="mb-4 text-lg font-bold">ILMIY.BXU.UZ</h3>
+            <h3 className="mb-4 text-lg font-bold">FitCRM</h3>
             <p className="text-sm text-blue-100">
-              Buxoro Xalqaro Universiteti ilmiy faoliyatni boshqarish platformasi
+              Fitnes markazlarini boshqarish uchun zamonaviy CRM platformasi
             </p>
           </div>
 
           <div>
             <h3 className="mb-4 text-lg font-bold">Aloqa</h3>
             <ul className="space-y-2 text-sm text-blue-100">
-              <li>Manzil: Buxoro, O'zbekiston</li>
+              <li>O'zbekiston</li>
               <li>Tel: +998 (XX) XXX-XX-XX</li>
-              <li>Email: info@bxu.uz</li>
+              <li>Email: info@fitcrm.uz</li>
             </ul>
           </div>
 
@@ -27,13 +27,13 @@ const Footer = () => {
             <h3 className="mb-4 text-lg font-bold">Foydali havolalar</h3>
             <ul className="space-y-2 text-sm text-blue-100">
               <li>
-                <a href="https://bxu.uz" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-                  Asosiy sayt
+                <a href="/admin/login" className="hover:text-white transition-colors">
+                  Admin kirish
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Yordam
+                <a href="/client/login" className="hover:text-white transition-colors">
+                  Mijoz kirish
                 </a>
               </li>
             </ul>
@@ -42,7 +42,7 @@ const Footer = () => {
 
         <div className="mt-8 border-t border-blue-700 pt-6 text-center">
           <p className="text-sm text-blue-200">
-            © {currentYear} Buxoro Xalqaro Universiteti. Barcha huquqlar himoyalangan.
+            © {currentYear} FitCRM. Barcha huquqlar himoyalangan.
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ApiCall from "config";
+import PhoneInput from "components/PhoneInput";
 import { toast, ToastContainer } from "react-toastify";
 import {
   MdPerson,
@@ -55,7 +56,7 @@ const ProfileOverview = () => {
   const [form, setForm] = useState({
     name: "",
     directorName: "",
-    phoneNumber: "",
+    phoneNumber: "+998",
     businessSphere: "",
     location: "",
     description: "",
@@ -81,7 +82,7 @@ const ProfileOverview = () => {
       setForm({
         name: res.data.name || "",
         directorName: res.data.directorName || "",
-        phoneNumber: res.data.phoneNumber || "",
+        phoneNumber: res.data.phoneNumber || "+998",
         businessSphere: res.data.businessSphere || "",
         location: res.data.location || "",
         description: res.data.description || "",
@@ -101,7 +102,7 @@ const ProfileOverview = () => {
     setForm({
       name: profile?.name || "",
       directorName: profile?.directorName || "",
-      phoneNumber: profile?.phoneNumber || "",
+      phoneNumber: profile?.phoneNumber || "+998",
       businessSphere: profile?.businessSphere || "",
       location: profile?.location || "",
       description: profile?.description || "",
@@ -269,13 +270,10 @@ const ProfileOverview = () => {
                   onChange={handleFormChange}
                   disabled={!editMode}
                 />
-                <FormField
-                  label="Telefon"
-                  name="phoneNumber"
-                  value={form.phoneNumber}
-                  onChange={handleFormChange}
-                  disabled={!editMode}
-                />
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">Telefon</label>
+                  <PhoneInput name="phoneNumber" value={form.phoneNumber} onChange={handleFormChange} disabled={!editMode} className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 disabled:cursor-default disabled:bg-gray-50 disabled:text-gray-600" />
+                </div>
                 <FormField
                   label="Faoliyat sohasi"
                   name="businessSphere"

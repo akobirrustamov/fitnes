@@ -11,5 +11,7 @@ public interface DatesService {
     HttpEntity<?> download(Integer orgId);
 
     HttpEntity<?> capabilities(Integer orgId);
+
+    HttpEntity<?> generate(Integer orgId, Integer month, Integer year);
 }
 

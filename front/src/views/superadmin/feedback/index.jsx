@@ -79,19 +79,19 @@ export default function FeedbackPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Murojaatlar</h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <h1 className="text-2xl font-semibold text-gray-900">Murojaatlar</h1>
+              <p className="mt-1 text-sm text-gray-600">
                 Xaridorlar va mehmon foydalanuvchilardan kelgan murojaatlar.
               </p>
             </div>
             <button
               onClick={handleMarkAllSeen}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
               <CheckCheck size={16} /> Barchasini o'qildi
             </button>
@@ -106,7 +106,7 @@ export default function FeedbackPage() {
             <select
               value={filters.markup}
               onChange={(e) => handleFilterChange("markup", e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none"
             >
               <option value="">Muhimlik — barchasi</option>
               <option value="true">Muhim</option>
@@ -115,7 +115,7 @@ export default function FeedbackPage() {
             <select
               value={filters.is_seen}
               onChange={(e) => handleFilterChange("is_seen", e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none"
             >
               <option value="">Ko'rilganlik — barchasi</option>
               <option value="false">O'qilmagan</option>
@@ -124,7 +124,7 @@ export default function FeedbackPage() {
             <select
               value={filters.is_registration}
               onChange={(e) => handleFilterChange("is_registration", e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none"
             >
               <option value="">Turi — barchasi</option>
               <option value="true">Ro'yxatdan o'tish</option>
@@ -134,17 +134,17 @@ export default function FeedbackPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 font-semibold text-slate-900">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-4 font-semibold text-gray-900">
             Murojaatlar ro'yxati
-            {total > 0 && <span className="ml-2 text-sm font-normal text-slate-500">({total} ta)</span>}
+            {total > 0 && <span className="ml-2 text-sm font-normal text-gray-500">({total} ta)</span>}
           </div>
           <div className="overflow-x-auto">
             {loading ? (
-              <div className="py-12 text-center text-sm text-slate-400">Yuklanmoqda...</div>
+              <div className="py-12 text-center text-sm text-gray-400">Yuklanmoqda...</div>
             ) : (
-              <table className="min-w-full text-left text-sm text-slate-600">
-                <thead className="border-b border-slate-100">
+              <table className="min-w-full text-left text-sm text-gray-600">
+                <thead className="border-b border-gray-100">
                   <tr>
                     <th className="px-6 py-3 font-medium">Muallif</th>
                     <th className="px-6 py-3 font-medium">Murojaat</th>
@@ -157,7 +157,7 @@ export default function FeedbackPage() {
                 <tbody>
                   {fbList.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="py-10 text-center text-slate-400">
+                      <td colSpan="6" className="py-10 text-center text-gray-400">
                         Murojaatlar topilmadi.
                       </td>
                     </tr>
@@ -165,11 +165,11 @@ export default function FeedbackPage() {
                     fbList.map((fb) => (
                       <tr
                         key={fb.id}
-                        className={`border-t border-slate-100 ${!fb.is_seen ? "bg-blue-50/40" : ""}`}
+                        className={`border-t border-gray-100 ${!fb.is_seen ? "bg-blue-50/40" : ""}`}
                       >
                         <td className="px-6 py-3">
-                          <div className="font-medium text-slate-800">{fb.fullName || fb.full_name || "—"}</div>
-                          <div className="text-xs text-slate-400">{fb.phoneNumber || fb.phone_number || ""}</div>
+                          <div className="font-medium text-gray-800">{fb.fullName || fb.full_name || "—"}</div>
+                          <div className="text-xs text-gray-400">{fb.phoneNumber || fb.phone_number || ""}</div>
                         </td>
                         <td className="px-6 py-3 max-w-xs">
                           <span className="line-clamp-2">{fb.message || fb.text || "—"}</span>
@@ -178,7 +178,7 @@ export default function FeedbackPage() {
                           {fb.is_registration || fb.isRegistration ? (
                             <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">Ro'yxatdan o'tish</span>
                           ) : (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Murojaat</span>
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Murojaat</span>
                           )}
                         </td>
                         <td className="px-6 py-3">
@@ -193,7 +193,7 @@ export default function FeedbackPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-3 text-xs text-slate-400">
+                        <td className="px-6 py-3 text-xs text-gray-400">
                           {fb.createdTime ? new Date(fb.createdTime).toLocaleDateString("uz-UZ") : "—"}
                         </td>
                         <td className="px-6 py-3 text-right">
@@ -209,7 +209,7 @@ export default function FeedbackPage() {
                             className={`mr-1 rounded-lg px-3 py-1 text-sm ${
                               fb.markup
                                 ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                             }`}
                             title={fb.markup ? "Muhimdan chiqarish" : "Muhim deb belgilash"}
                           >
@@ -217,7 +217,7 @@ export default function FeedbackPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(fb.id)}
-                            className="rounded-lg bg-rose-100 px-3 py-1 text-sm text-rose-700 hover:bg-rose-200"
+                            className="rounded-lg bg-pink-100 px-3 py-1 text-sm text-pink-700 hover:bg-pink-200"
                             title="O'chirish"
                           >
                             <Trash2 size={14} />
@@ -233,22 +233,22 @@ export default function FeedbackPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
-              <span className="text-sm text-slate-500">
+            <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
+              <span className="text-sm text-gray-500">
                 {page} / {totalPages} sahifa
               </span>
               <div className="flex items-center gap-2">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage((p) => p - 1)}
-                  className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-gray-200 p-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-gray-200 p-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -264,14 +264,14 @@ export default function FeedbackPage() {
           {selectedFeedback && (
             <>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">Murojaat tafsiloti</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Murojaat tafsiloti</h2>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleToggleMarkup(selectedFeedback.id, selectedFeedback.markup)}
                     className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${
                       selectedFeedback.markup
                         ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
                     <Star size={12} />
@@ -279,28 +279,28 @@ export default function FeedbackPage() {
                   </button>
                   <button
                     onClick={() => handleDelete(selectedFeedback.id)}
-                    className="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-200"
+                    className="inline-flex items-center gap-1 rounded-lg bg-pink-100 px-3 py-1.5 text-xs font-medium text-pink-700 hover:bg-pink-200"
                   >
                     <Trash2 size={12} /> O'chirish
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm">
+              <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm">
                 <div className="flex gap-2">
-                  <span className="w-32 shrink-0 text-slate-500">Muallif:</span>
+                  <span className="w-32 shrink-0 text-gray-500">Muallif:</span>
                   <span className="font-medium">{selectedFeedback.fullName || selectedFeedback.full_name || "—"}</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="w-32 shrink-0 text-slate-500">Telefon:</span>
+                  <span className="w-32 shrink-0 text-gray-500">Telefon:</span>
                   <span className="font-medium">{selectedFeedback.phoneNumber || selectedFeedback.phone_number || "—"}</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="w-32 shrink-0 text-slate-500">Email:</span>
+                  <span className="w-32 shrink-0 text-gray-500">Email:</span>
                   <span className="font-medium">{selectedFeedback.email || "—"}</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="w-32 shrink-0 text-slate-500">Turi:</span>
+                  <span className="w-32 shrink-0 text-gray-500">Turi:</span>
                   <span>
                     {selectedFeedback.is_registration || selectedFeedback.isRegistration
                       ? "Ro'yxatdan o'tish"
@@ -308,14 +308,14 @@ export default function FeedbackPage() {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="w-32 shrink-0 text-slate-500">Sana:</span>
+                  <span className="w-32 shrink-0 text-gray-500">Sana:</span>
                   <span>{selectedFeedback.createdTime ? new Date(selectedFeedback.createdTime).toLocaleString("uz-UZ") : "—"}</span>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-                <div className="mb-2 text-xs font-medium text-slate-500">Murojaat matni:</div>
-                <p className="text-sm leading-relaxed text-slate-800">
+              <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-2 text-xs font-medium text-gray-500">Murojaat matni:</div>
+                <p className="text-sm leading-relaxed text-gray-800">
                   {selectedFeedback.message || selectedFeedback.text || "Matn yo'q."}
                 </p>
               </div>

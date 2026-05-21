@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import ApiCall, { baseUrl } from "config";
+import PhoneInput from "components/PhoneInput";
 import { Plus, Edit, Trash2, CheckCircle2, KeyRound, Download } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
@@ -106,7 +107,7 @@ export default function RegionsPage() {
       password: "",
       provinceId: "",
       directorName: "",
-      phoneNumber: "",
+      phoneNumber: "+998",
       location: "",
       description: "",
       businessSphere: "",
@@ -133,7 +134,7 @@ export default function RegionsPage() {
       password: "",
       provinceId: region.provinceId || "",
       directorName: region.directorName || "",
-      phoneNumber: region.phoneNumber || "",
+      phoneNumber: region.phoneNumber || "+998",
       location: region.location || "",
       description: region.description || "",
       businessSphere: region.businessSphere || "",
@@ -246,15 +247,15 @@ export default function RegionsPage() {
       ?.name || region.provinceName || "—";
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4">
+    <div className="bg-gray-50 min-h-screen p-4">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="border-slate-200 rounded-2xl border bg-white p-6 shadow-sm">
+        <div className="border-gray-200 rounded-2xl border bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-slate-900 text-2xl font-semibold">
+              <h1 className="text-gray-900 text-2xl font-semibold">
                 Tumanlar
               </h1>
-              <p className="text-slate-600 mt-1 text-sm">
+              <p className="text-gray-600 mt-1 text-sm">
                 Tumanlar ro'yxatini ko'rish va qo'shish.
               </p>
             </div>
@@ -277,12 +278,12 @@ export default function RegionsPage() {
           </div>
 
           <div className="mt-6">
-            <div className="border-slate-200 overflow-hidden rounded-2xl border bg-white shadow-sm">
-              <div className="border-slate-200 bg-slate-50 text-slate-900 border-b px-6 py-4 font-semibold">
+            <div className="border-gray-200 overflow-hidden rounded-2xl border bg-white shadow-sm">
+              <div className="border-gray-200 bg-gray-50 text-gray-900 border-b px-6 py-4 font-semibold">
                 Tumanlar ro'yxati
               </div>
               <div className="overflow-x-auto px-6 py-4">
-                <table className="text-slate-600 min-w-full text-left text-sm">
+                <table className="text-gray-600 min-w-full text-left text-sm">
                   <thead>
                     <tr>
                       <th className="pb-3 font-medium">ID</th>
@@ -298,7 +299,7 @@ export default function RegionsPage() {
                       <tr>
                         <td
                           colSpan="6"
-                          className="text-slate-500 py-8 text-center"
+                          className="text-gray-500 py-8 text-center"
                         >
                           Tumanlar topilmadi.
                         </td>
@@ -307,7 +308,7 @@ export default function RegionsPage() {
                       regionList.map((region) => (
                         <tr
                           key={region.id}
-                          className="border-slate-200 border-t"
+                          className="border-gray-200 border-t"
                         >
                           <td className="py-3">{region.id}</td>
                           <td className="py-3">{region.name}</td>
@@ -328,7 +329,7 @@ export default function RegionsPage() {
                           <td className="py-3 text-right">
                             <button
                               onClick={() => handleEdit(region)}
-                              className="bg-slate-100 text-slate-700 hover:bg-slate-200 mr-2 rounded-lg px-3 py-1 text-sm"
+                              className="bg-gray-100 text-gray-700 hover:bg-gray-200 mr-2 rounded-lg px-3 py-1 text-sm"
                             >
                               <Edit size={14} />
                             </button>
@@ -340,7 +341,7 @@ export default function RegionsPage() {
                             </button>
                             <button
                               onClick={() => handleDelete(region.id)}
-                              className="bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-lg px-3 py-1 text-sm"
+                              className="bg-pink-100 text-pink-700 hover:bg-pink-200 rounded-lg px-3 py-1 text-sm"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -358,12 +359,12 @@ export default function RegionsPage() {
 
       <Modal open={showModal} onClose={closeModal} center>
         <div className="w-[520px] max-w-full p-6">
-          <div className="text-slate-900 mb-4 text-lg font-semibold">
+          <div className="text-gray-900 mb-4 text-lg font-semibold">
             {editId ? "Tumanni tahrirlash" : "Yangi tuman qo'shish"}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Nomi
               </label>
               <input
@@ -371,12 +372,12 @@ export default function RegionsPage() {
                 name="name"
                 value={form.name}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder="Tuman nomi"
               />
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Viloyat
               </label>
               <select
@@ -384,7 +385,7 @@ export default function RegionsPage() {
                 name="provinceId"
                 value={form.provinceId}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
               >
                 <option value="">Viloyatni tanlang</option>
                 {provincesList.map((province) => (
@@ -395,7 +396,7 @@ export default function RegionsPage() {
               </select>
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Login
               </label>
               <input
@@ -403,12 +404,12 @@ export default function RegionsPage() {
                 name="login"
                 value={form.login}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder="Login"
               />
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Parol
               </label>
               <input
@@ -417,67 +418,66 @@ export default function RegionsPage() {
                 name="password"
                 value={form.password}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder={editId ? "Yangi parol (ixtiyoriy)" : "Parol"}
               />
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Direktor
               </label>
               <input
                 name="directorName"
                 value={form.directorName}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder="Direktor ismi"
               />
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Telefon
               </label>
-              <input
+              <PhoneInput
                 name="phoneNumber"
                 value={form.phoneNumber}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                placeholder="Telefon raqami"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
               />
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Joylashuv
               </label>
               <input
                 name="location"
                 value={form.location}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder="Joylashuv"
               />
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Soha
               </label>
               <input
                 name="businessSphere"
                 value={form.businessSphere}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder="Biznes sohasi"
               />
             </div>
             <div>
-              <label className="text-slate-700 mb-2 block text-sm font-medium">
+              <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Parol eslatmasi
               </label>
               <input
                 name="passwordHint"
                 value={form.passwordHint}
                 onChange={handleInput}
-                className="border-slate-200 bg-slate-50 text-slate-900 focus:border-slate-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
                 placeholder="Parol eslatmasi"
               />
             </div>
@@ -492,7 +492,7 @@ export default function RegionsPage() {
               <button
                 type="button"
                 onClick={closeModal}
-                className="border-slate-200 text-slate-700 hover:bg-slate-50 inline-flex items-center justify-center rounded-xl border bg-white px-4 py-3 text-sm font-semibold transition"
+                className="border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center justify-center rounded-xl border bg-white px-4 py-3 text-sm font-semibold transition"
               >
                 Bekor qilish
               </button>

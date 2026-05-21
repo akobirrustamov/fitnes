@@ -50,10 +50,6 @@ const Navbar = (props) => {
     ROLE_ADMIN: "/admin/default",
     ROLE_SUPERADMIN: "/superadmin/default",
     ROLE_USER: "/user/default",
-    ROLE_REKTOR: "/rektor/default",
-    ROLE_ILMIY_BOLIM: "/ilmiy-bolim/default",
-    ROLE_ILMIY_RAHBAR: "/ilmiy-rahbar/default",
-    ROLE_ILMIY_TEXNIK: "/ilmiy-texnik/default",
     ROLE_BUGALTER: "/bugalter/default",
     ROLE_OFFICE: "/office/default",
   };

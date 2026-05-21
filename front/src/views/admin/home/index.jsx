@@ -64,7 +64,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Jami mijozlar" value={fmt(stats?.totalClients)} />
         <StatCard label="Faol mijozlar" value={fmt(stats?.activeClients)} color="text-green-600" />
-        <StatCard label="Muddati o'tgan" value={fmt(stats?.expiredClients)} color="text-rose-500" />
+        <StatCard label="Muddati o'tgan" value={fmt(stats?.expiredClients)} color="text-pink-500" />
         <StatCard label="Xodimlar" value={fmt(stats?.totalStaff)} />
       </div>
 
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
         <StatCard
           label="Umumiy qarz"
           value={fmtMoney(stats?.totalDebt)}
-          color="text-rose-500"
+          color="text-pink-500"
         />
         <StatCard
           label="Bugungi kirish"
@@ -178,7 +178,7 @@ export default function AdminDashboard() {
                     <td className="px-6 py-3 text-gray-400">{i + 1}</td>
                     <td className="px-6 py-3 font-medium text-gray-900">{d.fullname}</td>
                     <td className="px-6 py-3 text-gray-500">{d.phoneNumber || "—"}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-rose-500">
+                    <td className="px-6 py-3 text-right font-semibold text-pink-500">
                       {fmtMoney(d.totalDebt)}
                     </td>
                   </tr>

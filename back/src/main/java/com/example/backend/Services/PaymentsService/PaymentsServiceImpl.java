@@ -17,19 +17,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import jakarta.persistence.criteria.Predicate;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -203,17 +202,18 @@ public class PaymentsServiceImpl implements PaymentsService {
 
             for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
 
-            Path targetDir = Paths.get("src/main/resources/static/downloads");
-            Files.createDirectories(targetDir);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            workbook.write(baos);
+            byte[] bytes = baos.toByteArray();
 
-            String fileName = "payments_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".xlsx";
-            Path filePath = targetDir.resolve(fileName);
-            try (OutputStream out = Files.newOutputStream(filePath)) {
-                workbook.write(out);
-            }
+            String fileName = "tolovlar_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".xlsx";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDisposition(ContentDisposition.attachment().filename(fileName).build());
+            headers.setContentLength(bytes.length);
+            return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
 
-            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-            return ResponseEntity.ok(Map.of("url", base + "/downloads/" + fileName));
         } catch (Exception e) {
             log.error("Payments excel xatoligi", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

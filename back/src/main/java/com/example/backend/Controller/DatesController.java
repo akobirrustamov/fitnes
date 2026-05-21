@@ -31,8 +31,9 @@ public class DatesController {
         if (header == null || !header.startsWith("Bearer ")) return null;
         String token = header.substring(7);
         try {
-            String phone = jwtService.extractSubjectFromJwt(token);
-            return userRepo.findByPhone(phone)
+            String subject = jwtService.extractSubjectFromJwt(token);
+            java.util.UUID userId = java.util.UUID.fromString(subject);
+            return userRepo.findById(userId)
                     .map(com.example.backend.Entity.User::getNumber)
                     .orElse(null);
         } catch (Exception e) {
@@ -77,6 +78,16 @@ public class DatesController {
         Integer orgId = resolveOrgId(request);
         if (orgId == null) return unauthorized();
         return datesService.capabilities(orgId);
+    }
+
+    @PostMapping("/generate")
+    public HttpEntity<?> generate(HttpServletRequest request,
+                                  @RequestParam Integer month,
+                                  @RequestParam(required = false) Integer year) {
+        Integer orgId = resolveOrgId(request);
+        if (orgId == null) return unauthorized();
+        int safeYear = (year == null ? LocalDate.now().getYear() : year);
+        return datesService.generate(orgId, month, safeYear);
     }
 }
 

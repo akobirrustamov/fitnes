@@ -146,7 +146,7 @@ export default function MainDashboardSuper() {
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-rose-50 p-2.5 text-rose-500">
+              <div className="rounded-xl bg-pink-50 p-2.5 text-pink-500">
                 <MdBlock className="h-6 w-6" />
               </div>
               <div>

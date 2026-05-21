@@ -47,6 +47,15 @@ public class JwtService {
         return jwt;
     }
 
+    public String generateTokenForSubject(String subject) {
+        return Jwts.builder()
+                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRY_SECONDS * 1000))
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setSubject(subject)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public Key getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode("333aae7133c19eda8f7f61ce07e64281c295df67681b1ed47c9c270a488f94d0");
         return Keys.hmacShaKeyFor(keyBytes);

@@ -10,17 +10,17 @@ const Header = () => {
           <Link to="/" className="flex items-center space-x-3">
             <img
               src={Logo}
-              alt="BXU Logo"
+              alt="FitCRM Logo"
               className="h-12 w-12 rounded-full object-contain bg-white p-1"
             />
             <div className="text-white">
-              <h1 className="text-xl font-bold">Fitness</h1>
-              <p className="text-xs text-blue-100">Buxoro Xalqaro Universiteti</p>
+              <h1 className="text-xl font-bold">FitCRM</h1>
+              <p className="text-xs text-blue-100">Fitnes markazini boshqarish</p>
             </div>
           </Link>
 
           <Link
-            to="/student/login"
+            to="/admin/login"
             className="rounded-lg bg-white px-6 py-2.5 font-semibold text-blue-700 shadow-md transition-all duration-200 hover:bg-blue-50 hover:shadow-lg"
           >
             Kirish

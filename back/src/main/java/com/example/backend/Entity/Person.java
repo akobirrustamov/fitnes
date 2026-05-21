@@ -62,6 +62,9 @@ public class Person {
     @Column(name = "trainer_id")
     private Long trainerId;
 
+    @Column(name = "client_password")
+    private String password;
+
     @Column(nullable = false)
     private boolean deleted;
 

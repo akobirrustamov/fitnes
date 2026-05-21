@@ -121,13 +121,13 @@ export default function MessagesPage() {
   const orgList = safeArray(organizations);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Xabarlar</h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <h1 className="text-2xl font-semibold text-gray-900">Xabarlar</h1>
+              <p className="mt-1 text-sm text-gray-600">
                 Zallarga individual xabarlar yuborish va tarixini ko'rish.
               </p>
             </div>
@@ -148,7 +148,7 @@ export default function MessagesPage() {
             <select
               value={filters.provinceId}
               onChange={(e) => handleFilterChange("provinceId", e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none"
             >
               <option value="">Viloyat — barchasi</option>
               {safeArray(provinces).map((p) => (
@@ -159,7 +159,7 @@ export default function MessagesPage() {
               value={filters.regionId}
               onChange={(e) => handleFilterChange("regionId", e.target.value)}
               disabled={!filters.provinceId}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none disabled:opacity-50"
+              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none disabled:opacity-50"
             >
               <option value="">Tuman — barchasi</option>
               {safeArray(regions).map((r) => (
@@ -169,7 +169,7 @@ export default function MessagesPage() {
             <select
               value={filters.organizationId}
               onChange={(e) => handleFilterChange("organizationId", e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none"
             >
               <option value="">Zal — barchasi</option>
               {orgList.map((o) => (
@@ -179,7 +179,7 @@ export default function MessagesPage() {
             <select
               value={filters.type}
               onChange={(e) => handleFilterChange("type", e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none"
             >
               <option value="">Turi — barchasi</option>
               <option value="admin">Admin</option>
@@ -189,17 +189,17 @@ export default function MessagesPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 font-semibold text-slate-900">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-4 font-semibold text-gray-900">
             Xabarlar tarixi
-            {total > 0 && <span className="ml-2 text-sm font-normal text-slate-500">({total} ta)</span>}
+            {total > 0 && <span className="ml-2 text-sm font-normal text-gray-500">({total} ta)</span>}
           </div>
           <div className="overflow-x-auto">
             {loading ? (
-              <div className="py-12 text-center text-sm text-slate-400">Yuklanmoqda...</div>
+              <div className="py-12 text-center text-sm text-gray-400">Yuklanmoqda...</div>
             ) : (
-              <table className="min-w-full text-left text-sm text-slate-600">
-                <thead className="border-b border-slate-100">
+              <table className="min-w-full text-left text-sm text-gray-600">
+                <thead className="border-b border-gray-100">
                   <tr>
                     <th className="px-6 py-3 font-medium">Zal</th>
                     <th className="px-6 py-3 font-medium">Sarlavha</th>
@@ -212,34 +212,34 @@ export default function MessagesPage() {
                 <tbody>
                   {msgList.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="py-10 text-center text-slate-400">
+                      <td colSpan="6" className="py-10 text-center text-gray-400">
                         Xabarlar topilmadi.
                       </td>
                     </tr>
                   ) : (
                     msgList.map((m) => (
-                      <tr key={m.id} className="border-t border-slate-100">
-                        <td className="px-6 py-3 font-medium text-slate-800">
+                      <tr key={m.id} className="border-t border-gray-100">
+                        <td className="px-6 py-3 font-medium text-gray-800">
                           {m.organizationName || m.organization_name || "—"}
                         </td>
                         <td className="px-6 py-3">{m.title || "—"}</td>
                         <td className="px-6 py-3 max-w-xs">
-                          <span className="line-clamp-2 text-slate-500">{m.body || m.message || "—"}</span>
+                          <span className="line-clamp-2 text-gray-500">{m.body || m.message || "—"}</span>
                         </td>
                         <td className="px-6 py-3">
                           {m.type === "auto" || m.messageType === "auto" ? (
                             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">Avtomatik</span>
                           ) : (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Admin</span>
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Admin</span>
                           )}
                         </td>
-                        <td className="px-6 py-3 text-xs text-slate-400">
+                        <td className="px-6 py-3 text-xs text-gray-400">
                           {m.createdTime ? new Date(m.createdTime).toLocaleDateString("uz-UZ") : "—"}
                         </td>
                         <td className="px-6 py-3 text-right">
                           <button
                             onClick={() => handleDelete(m.id)}
-                            className="rounded-lg bg-rose-100 px-3 py-1 text-sm text-rose-700 hover:bg-rose-200"
+                            className="rounded-lg bg-pink-100 px-3 py-1 text-sm text-pink-700 hover:bg-pink-200"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -253,20 +253,20 @@ export default function MessagesPage() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
-              <span className="text-sm text-slate-500">{page} / {totalPages} sahifa</span>
+            <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
+              <span className="text-sm text-gray-500">{page} / {totalPages} sahifa</span>
               <div className="flex items-center gap-2">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage((p) => p - 1)}
-                  className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-gray-200 p-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-gray-200 p-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -279,17 +279,17 @@ export default function MessagesPage() {
       {/* Send Message Modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)} center>
         <div className="w-[500px] max-w-full p-6">
-          <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
             <Send size={20} /> Xabar yuborish
           </div>
           <form onSubmit={handleSend} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Zal</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Zal</label>
               <select
                 required
                 value={form.organizationId}
                 onChange={(e) => setForm((prev) => ({ ...prev, organizationId: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
               >
                 <option value="">Zalni tanlang</option>
                 {safeArray(organizations).map((o) => (
@@ -298,22 +298,22 @@ export default function MessagesPage() {
               </select>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Sarlavha</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Sarlavha</label>
               <input
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Xabar sarlavhasi (ixtiyoriy)"
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Xabar matni</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Xabar matni</label>
               <textarea
                 required
                 value={form.body}
                 onChange={(e) => setForm((prev) => ({ ...prev, body: e.target.value }))}
                 rows="4"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gray-400"
                 placeholder="Xabar matnini kiriting..."
               />
             </div>
@@ -329,7 +329,7 @@ export default function MessagesPage() {
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 Bekor qilish
               </button>

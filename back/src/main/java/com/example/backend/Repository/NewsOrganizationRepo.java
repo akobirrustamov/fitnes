@@ -69,6 +69,8 @@ public interface NewsOrganizationRepo extends JpaRepository<NewsOrganization, Lo
 
     Optional<NewsOrganization> findByOrganizationIdAndNews_Id(Integer organizationId, Long newsId);
 
+    void deleteByNews_Id(Long newsId);
+
     @Modifying
     @Query("update NewsOrganization no set no.isRead = true where no.organizationId = :orgId and no.isRead = false")
     int markAllAsRead(@Param("orgId") Integer orgId);

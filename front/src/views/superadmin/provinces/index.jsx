@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import ApiCall, { baseUrl } from "config";
+import PhoneInput from "components/PhoneInput";
 import { Plus, Edit, Trash2, CheckCircle2, KeyRound, Download } from "lucide-react";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
@@ -15,7 +16,7 @@ export default function ProvincesPage() {
     login: "",
     password: "",
     directorName: "",
-    phoneNumber: "",
+    phoneNumber: "+998",
     location: "",
     description: "",
     businessSphere: "",
@@ -79,7 +80,7 @@ export default function ProvincesPage() {
       login: "",
       password: "",
       directorName: "",
-      phoneNumber: "",
+      phoneNumber: "+998",
       location: "",
       description: "",
       businessSphere: "",
@@ -95,7 +96,7 @@ export default function ProvincesPage() {
       login: province.login || "",
       password: "",
       directorName: province.directorName || "",
-      phoneNumber: province.phoneNumber || "",
+      phoneNumber: province.phoneNumber || "+998",
       location: province.location || "",
       description: province.description || "",
       businessSphere: province.businessSphere || "",
@@ -298,7 +299,7 @@ export default function ProvincesPage() {
                             </button>
                             <button
                               onClick={() => handleDelete(province.id)}
-                              className="bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-lg px-3 py-1 text-sm"
+                              className="bg-pink-100 text-pink-700 hover:bg-pink-200 rounded-lg px-3 py-1 text-sm"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -378,12 +379,11 @@ export default function ProvincesPage() {
               <label className="text-gray-700 mb-2 block text-sm font-medium">
                 Telefon
               </label>
-              <input
+              <PhoneInput
                 name="phoneNumber"
                 value={form.phoneNumber}
                 onChange={handleInput}
                 className="border-gray-200 bg-gray-50 text-gray-900 focus:border-gray-400 w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                placeholder="Telefon raqami"
               />
             </div>
             <div>

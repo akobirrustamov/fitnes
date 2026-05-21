@@ -1,438 +1,253 @@
 import { useEffect, useState } from "react";
-import ApiCall from "../../../config/index"; // Adjust import path if needed
+import ApiCall from "../../../config";
+import PhoneInput from "components/PhoneInput";
 import { Modal } from "react-responsive-modal";
 import "react-responsive-modal/styles.css";
-import { Trash2, Edit, X, Plus } from "lucide-react"; // Optional icons, you can use any icon lib
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { Plus, Edit, Trash2 } from "lucide-react";
 
-const Dashboard = () => {
-  // State
+const EMPTY_FORM = { name: "", phone: "+998", password: "", roleIds: [] };
+
+export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    id: null,
-    phone: "",
-    password: "",
-    name: "",
-    email: "",
-    orcid: "",
-    affiliation: "",
-    country: "",
-    bio: "",
-    roleIds: [], // array of role IDs (numbers)
-  });
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const safeArray = (value) => (Array.isArray(value) ? value : []);
-  const usersList = safeArray(users);
-  const rolesList = safeArray(roles);
-
-  // Fetch users and roles on mount
   useEffect(() => {
-    getUsers();
-    getRoles();
+    fetchUsers();
+    fetchRoles();
   }, []);
 
-  // ---------- API Calls ----------
-  const getUsers = async () => {
-    try {
-      const result = await ApiCall("/api/v1/admin/users", "GET");
-      setUsers(Array.isArray(result.data) ? result.data : []);
-    } catch (error) {
-      console.error("Foydalanuvchilarni olishda xatolik", error);
-    }
-  };
-
-  const getRoles = async () => {
-    try {
-      const result = await ApiCall("/api/v1/roles", "GET");
-      setRoles(Array.isArray(result.data) ? result.data : []);
-    } catch (error) {
-      console.error("Rolllarni olishda xatolik", error);
-    }
-  };
-
-  const createUser = async (userData) => {
-    try {
-      await ApiCall("/api/v1/admin/users", "POST", userData);
-      await getUsers(); // refresh list
-      closeModal();
-    } catch (error) {
-      console.error("Yaratishda xatolik", error);
-    }
-  };
-
-  const updateUser = async (id, userData) => {
-    try {
-      await ApiCall(`/api/v1/admin/users/${id}`, "PUT", userData);
-      await getUsers();
-      closeModal();
-    } catch (error) {
-      console.error("Yangilashda xatolik", error);
-    }
-  };
-
-  const deleteUser = async (id) => {
-    if (window.confirm("Ushbu foydalanuvchini o'chirishni xohlaysizmi?")) {
-      try {
-        await ApiCall(`/api/v1/admin/users/${id}`, "DELETE");
-        await getUsers();
-      } catch (error) {
-        console.error("O'chirishda xatolik", error);
-      }
-    }
-  };
-
-  // ---------- Form Handlers ----------
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleRoleChange = (roleId) => {
-    setFormData((prev) => {
-      const currentRoleIds = prev.roleIds;
-      if (currentRoleIds.includes(roleId)) {
-        // Remove role
-        return {
-          ...prev,
-          roleIds: currentRoleIds.filter((id) => id !== roleId),
-        };
-      } else {
-        // Add role
-        return { ...prev, roleIds: [...currentRoleIds, roleId] };
-      }
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const fetchUsers = async () => {
     setLoading(true);
-
-    // Prepare payload (exclude id for create)
-    const payload = {
-      phone: formData.phone,
-      password: formData.password,
-      name: formData.name,
-      email: formData.email,
-      orcid: formData.orcid,
-      affiliation: formData.affiliation,
-      country: formData.country,
-      bio: formData.bio,
-      roleIds: formData.roleIds,
-    };
-
-    if (isEditing && formData.id) {
-      updateUser(formData.id, payload);
-    } else {
-      createUser(payload);
-    }
+    const res = await ApiCall("/api/v1/admin/users", "GET");
+    if (!res?.error) setUsers(Array.isArray(res.data) ? res.data : []);
     setLoading(false);
   };
 
-  const openEditModal = (user) => {
-    setFormData({
-      id: user.id,
-      phone: user.phone,
-      password: "", // you might want to leave blank or show placeholder
-      name: user.name,
-      email: user.email || "",
-      orcid: user.orcid || "",
-      affiliation: user.affiliation || "",
-      country: user.country || "",
-      bio: user.bio || "",
-      roleIds: Array.isArray(user.roles) ? user.roles.map((role) => role.id) : [],
+  const fetchRoles = async () => {
+    const res = await ApiCall("/api/v1/roles", "GET");
+    if (!res?.error) setRoles(Array.isArray(res.data) ? res.data : []);
+  };
+
+  const openCreate = () => {
+    setForm(EMPTY_FORM);
+    setEditId(null);
+    setIsEditing(false);
+    setShowModal(true);
+  };
+
+  const openEdit = (user) => {
+    setForm({
+      name: user.name || "",
+      phone: user.phone || "+998",
+      password: "",
+      roleIds: Array.isArray(user.roles) ? user.roles.map((r) => r.id) : [],
     });
+    setEditId(user.id);
     setIsEditing(true);
     setShowModal(true);
   };
 
-  const openCreateModal = () => {
-    setFormData({
-      id: null,
-      phone: "",
-      password: "",
-      name: "",
-      email: "",
-      orcid: "",
-      affiliation: "",
-      country: "",
-      bio: "",
-      roleIds: [],
-    });
-    setIsEditing(false);
-    setShowModal(true);
+  const handleInput = (e) => {
+    const { name, value } = e.target;
+    setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setFormData({
-      id: null,
-      phone: "",
-      password: "",
-      name: "",
-      email: "",
-      orcid: "",
-      affiliation: "",
-      country: "",
-      bio: "",
-      roleIds: [],
+  const toggleRole = (roleId) => {
+    setForm((p) => {
+      const ids = p.roleIds.includes(roleId)
+        ? p.roleIds.filter((id) => id !== roleId)
+        : [...p.roleIds, roleId];
+      return { ...p, roleIds: ids };
     });
-    setIsEditing(false);
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.phone.trim()) {
+      toast.error("Ism va telefon majburiy");
+      return;
+    }
+    if (!isEditing && !form.password.trim()) {
+      toast.error("Yangi foydalanuvchi uchun parol majburiy");
+      return;
+    }
+
+    const payload = {
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      roleIds: form.roleIds,
+      ...(form.password.trim() ? { password: form.password.trim() } : {}),
+    };
+
+    setSaving(true);
+    const res = isEditing
+      ? await ApiCall(`/api/v1/admin/users/${editId}`, "PUT", payload)
+      : await ApiCall("/api/v1/admin/users", "POST", payload);
+    setSaving(false);
+
+    if (!res?.error) {
+      toast.success(isEditing ? "Yangilandi." : "Yaratildi.");
+      setShowModal(false);
+      fetchUsers();
+    } else {
+      toast.error(res.data?.message || "Xatolik yuz berdi.");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Foydalanuvchini o'chirishni xohlaysizmi?")) return;
+    const res = await ApiCall(`/api/v1/admin/users/${id}`, "DELETE");
+    if (!res?.error) {
+      toast.success("O'chirildi.");
+      fetchUsers();
+    } else {
+      toast.error(res.data?.message || "Xatolik.");
+    }
+  };
+
+  const roleLabel = (name) =>
+    name?.replace("ROLE_", "").replace(/_/g, " ") || name;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl bg-white shadow-lg">
+    <div className="min-h-screen bg-gray-50 p-4">
+      <ToastContainer position="top-right" autoClose={3000} />
+      <div className="mx-auto max-w-5xl space-y-4">
+
         {/* Header */}
-        <div className="flex flex-col items-center justify-between border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 sm:flex-row">
-          <h1 className="mb-3 text-2xl font-bold text-gray-800 sm:mb-0">
-            Foydalanuvchilarni boshqarish
-          </h1>
-          <button
-            onClick={openCreateModal}
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white shadow-sm transition duration-200 hover:bg-blue-700"
-          >
-            <Plus size={18} className="mr-2" />
-            Yangi foydalanuvchi qo'shish
-          </button>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Foydalanuvchilar</h1>
+              <p className="mt-0.5 text-sm text-gray-500">Jami {users.length} ta foydalanuvchi</p>
+            </div>
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              <Plus size={16} /> Yangi foydalanuvchi
+            </button>
+          </div>
         </div>
 
-        {/* Users Table - Responsive */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  T/R
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Ism
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Telefon / Login
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Affiliation
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Rollar
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Amallar
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {usersList.length === 0 ? (
+        {/* Table */}
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm text-gray-700">
+              <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  <td
-                    colSpan="7"
-                    className="px-6 py-12 text-center text-gray-500"
-                  >
-                    Foydalanuvchilar topilmadi. Yangi foydalanuvchi qo'shish
-                    uchun bosing.
-                  </td>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">#</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Ism</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Telefon</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Rollar</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Amallar</th>
                 </tr>
-              ) : (
-                usersList.map((user, idx) => (
-                  <tr key={user.id} className="transition hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {idx + 1}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                      {user.name || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                      {user.phone}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                      {user.email || "-"}
-                    </td>
-                    <td className="max-w-xs truncate px-6 py-4 text-sm text-gray-600">
-                      {user.affiliation || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                      {(Array.isArray(user.roles) ? user.roles.map((r) => r.name).join(", ") : "") ||
-                        "Rollar mavjud emas"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                      <button
-                        onClick={() => openEditModal(user)}
-                        className="mr-3 text-indigo-600 hover:text-indigo-900"
-                        aria-label="Tahrirlash"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => deleteUser(user.id)}
-                        className="text-red-600 hover:text-red-900"
-                        aria-label="O'chirish"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {loading ? (
+                  [...Array(4)].map((_, i) => (
+                    <tr key={i}>
+                      {[...Array(5)].map((_, j) => (
+                        <td key={j} className="px-4 py-4">
+                          <div className="h-4 animate-pulse rounded bg-gray-100" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-gray-400">
+                      Foydalanuvchilar topilmadi
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  users.map((user, idx) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-400">{idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{user.name || "—"}</td>
+                      <td className="px-4 py-3 text-gray-500">{user.phone}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(user.roles) && user.roles.length > 0 ? (
+                            user.roles.map((r) => (
+                              <span
+                                key={r.id}
+                                className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700"
+                              >
+                                {roleLabel(r.name)}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-gray-400">Rol yo'q</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => openEdit(user)}
+                            className="rounded-lg bg-gray-100 p-1.5 text-gray-700 hover:bg-gray-200"
+                          >
+                            <Edit size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user.id)}
+                            className="rounded-lg bg-pink-100 p-1.5 text-pink-700 hover:bg-pink-200"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Modal for Create/Edit */}
-      <Modal
-        open={showModal}
-        onClose={closeModal}
-        center
-        styles={{
-          modal: {
-            width: "90%",
-            maxWidth: "600px",
-            borderRadius: "24px",
-            padding: "0",
-            backgroundColor: "#ffffff",
-            maxHeight: "90vh",
-            overflowY: "auto",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          },
-          overlay: {
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            backdropFilter: "blur(6px)",
-          },
-        }}
-      >
-        <div className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {isEditing
-                ? "Foydalanuvchini tahrirlash"
-                : "Yangi foydalanuvchi qo'shish"}
-            </h2>
-            <button
-              onClick={closeModal}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name */}
+      {/* Create / Edit Modal */}
+      <Modal open={showModal} onClose={() => setShowModal(false)} center>
+        <div className="w-[440px] max-w-full p-6">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
+            {isEditing ? "Foydalanuvchini tahrirlash" : "Yangi foydalanuvchi"}
+          </h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 To'liq ism <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
                 name="name"
-                value={formData.name}
-                onChange={handleInputChange}
+                value={form.name}
+                onChange={handleInput}
+                placeholder="Ism Familiya"
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="To'liq ismingizni kiriting"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-gray-400"
               />
             </div>
 
-            {/* Phone / Login */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Telefon / Login <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <PhoneInput
                 name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
+                value={form.phone}
+                onChange={handleInput}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="+998 xx xxx xx xx"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-gray-400"
               />
             </div>
 
-            {/* Email */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="example@domain.com"
-              />
-            </div>
-
-            {/* ORCID */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                ORCID
-              </label>
-              <input
-                type="text"
-                name="orcid"
-                value={formData.orcid}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0000-0000-0000-0000"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Open Researcher and Contributor ID
-              </p>
-            </div>
-
-            {/* Affiliation */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Affiliation (Tashkilot)
-              </label>
-              <input
-                type="text"
-                name="affiliation"
-                value={formData.affiliation}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Buxoro Xalqaro Universiteti"
-              />
-            </div>
-
-            {/* Country */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Mamlakat
-              </label>
-              <input
-                type="text"
-                name="country"
-                value={formData.country}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Uzbekistan"
-              />
-            </div>
-
-            {/* Bio */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Biografiya
-              </label>
-              <textarea
-                name="bio"
-                value={formData.bio}
-                onChange={handleInputChange}
-                rows="3"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Qisqacha biografiya..."
-              />
-            </div>
-
-            {/* Password */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Parol {!isEditing && <span className="text-red-500">*</span>}
@@ -440,63 +255,57 @@ const Dashboard = () => {
               <input
                 type="password"
                 name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required={!isEditing} // only required when creating
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Parolni kiriting"
+                value={form.password}
+                onChange={handleInput}
+                placeholder={isEditing ? "O'zgartirish uchun kiriting" : "Parol"}
+                required={!isEditing}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-gray-400"
               />
               {isEditing && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Agar parolni o'zgartirmoqchi bo'lmasangiz, bo'sh qoldiring
-                </p>
+                <p className="mt-1 text-xs text-gray-400">Bo'sh qoldirsangiz, parol o'zgarmaydi</p>
               )}
             </div>
 
-            {/* Roles (multiple checkboxes) */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Rolni belgilash
-              </label>
-              <div className="flex flex-wrap gap-4">
-                {rolesList.map((role) => (
-                  <label key={role.id} className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.roleIds.includes(role.id)}
-                      onChange={() => handleRoleChange(role.id)}
-                      className="form-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">
-                      {role.name}
-                    </span>
-                  </label>
-                ))}
+            {/* Roles */}
+            {roles.length > 0 && (
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Rollar</label>
+                <div className="flex flex-wrap gap-2">
+                  {roles.map((role) => {
+                    const active = form.roleIds.includes(role.id);
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => toggleRole(role.id)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                          active
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {roleLabel(role.name)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {roles.length === 0 && (
-                <p className="text-sm text-gray-500">Rollar mavjud emas</p>
-              )}
-            </div>
+            )}
 
-            {/* Submit Buttons */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 transition hover:bg-gray-50"
-              >
-                Bekor qilish
-              </button>
+            <div className="flex gap-3 pt-2">
               <button
                 type="submit"
-                disabled={loading}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700 disabled:opacity-50"
+                disabled={saving}
+                className="rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
               >
-                {loading
-                  ? "Saqlanmoqda..."
-                  : isEditing
-                  ? "Yangilash"
-                  : "Yaratish"}
+                {saving ? "Saqlanmoqda..." : isEditing ? "Yangilash" : "Saqlash"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Bekor qilish
               </button>
             </div>
           </form>
@@ -504,6 +313,4 @@ const Dashboard = () => {
       </Modal>
     </div>
   );
-};
-
-export default Dashboard;
+}

@@ -24,6 +24,8 @@ public interface PersonRepo extends JpaRepository<Person, Long>, JpaSpecificatio
 
     long countByOrganizationIdAndDeletedFalseAndGraphicId(Integer organizationId, Integer graphicId);
 
+    Optional<Person> findByPhoneNumberAndDeletedFalse(String phoneNumber);
+
     @Modifying
     @Query("update Person p set p.trainerId = null where p.organizationId = :orgId and p.trainerId = :trainerId and p.deleted = false")
     int clearTrainerByTrainerId(@Param("orgId") Integer orgId, @Param("trainerId") Long trainerId);
