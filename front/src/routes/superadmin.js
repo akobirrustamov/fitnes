@@ -12,6 +12,7 @@ import SuperAdminServers from "views/superadmin/servers";
 import SuperAdminNews from "views/superadmin/news";
 import SuperAdminFeedback from "views/superadmin/feedback";
 import SuperAdminMessages from "views/superadmin/messages";
+import SuperAdminActions from "views/superadmin/actions";
 
 import {
   MdHome,
@@ -26,6 +27,7 @@ import {
   MdNewspaper,
   MdForum,
   MdMessage,
+  MdTableChart,
 } from "react-icons/md";
 
 const routes = [
@@ -84,6 +86,13 @@ const routes = [
     path: "sales",
     hidden: true,
     component: <SuperAdminSales />,
+  },
+  {
+    name: "Tizim loglar jadvali",
+    layout: "/superadmin",
+    path: "actions",
+    icon: <MdTableChart className="h-6 w-6" />,
+    component: <SuperAdminActions />,
   },
   {
     name: "Serverlar",
