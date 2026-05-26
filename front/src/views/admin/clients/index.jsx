@@ -212,8 +212,8 @@ export default function ClientsPage() {
       e.target.value = "";
       return;
     }
-    if (file.size > 200 * 1024) {
-      toast.error("Rasm hajmi 200KB dan oshmasligi kerak");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Rasm hajmi 5MB dan oshmasligi kerak");
       e.target.value = "";
       return;
     }
@@ -772,7 +772,7 @@ export default function ClientsPage() {
                 <User size={40} className="text-gray-300" />
               </div>
             )}
-            <p className="text-center text-xs text-gray-400">JPEG/JPG, maks 200KB</p>
+            <p className="text-center text-xs text-gray-400">JPEG/JPG, maks 5MB</p>
             <input
               ref={photoFileRef}
               type="file"

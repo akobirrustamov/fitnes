@@ -84,8 +84,8 @@ export default function TrainersPage() {
       e.target.value = "";
       return;
     }
-    if (file.size > 200 * 1024) {
-      toast.error("Rasm hajmi 200KB dan oshmasligi kerak");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Rasm hajmi 5MB dan oshmasligi kerak");
       e.target.value = "";
       return;
     }
@@ -331,7 +331,7 @@ export default function TrainersPage() {
             {/* Photo */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Rasm (JPEG, max 200KB)
+                Rasm (JPEG, max 5MB)
               </label>
               <div className="flex items-center gap-3">
                 <input ref={fileRef} type="file" accept=".jpg,.jpeg" onChange={handlePhotoUpload} className="hidden" />
